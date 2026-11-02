@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Organic Farm - Wireframes & Sitemap (owner-mobile)</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary: #2e7d32;
+            --primary-light: #e8f5e9;
+            --border-color: #cccccc;
+            --badge-real: #2e7d32;
+            --badge-mock: #f57c00;
+            --badge-backend: #d32f2f;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-color: #e0e0e0;
+                --primary: #4caf50;
+                --primary-light: #1b381b;
+                --border-color: #444444;
+            }
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+        h1, h2, h3 { color: var(--primary); }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+        }
+        .badge.real { background-color: var(--badge-real); }
+        .badge.mock { background-color: var(--badge-mock); }
+        .badge.backend { background-color: var(--badge-backend); }
+
+        .wireframe-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .phone-frame {
+            width: 320px;
+            height: 600px;
+            border: 4px solid #333;
+            border-radius: 32px;
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .phone-header {
+            background: var(--primary);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .phone-body {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        .phone-nav {
+            height: 56px;
+            background: #eee;
+            border-top: 1px solid #ccc;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 11px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th { background-color: var(--primary-light); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>ERP Organic Farm — Frontend Wireframes & Sitemap</h1>
+    <p><strong>Scope</strong>: <code>owner-mobile</code> (ฝั่งเจ้าของฟาร์ม มือถือเป็นหลัก)</p>
+
+    <!-- Section 1: Sitemap -->
+    <div class="card">
+        <h2>1. แผนผังเมนู (Sitemap) As-Is vs To-Be</h2>
+        <table>
+            <tr>
+                <th>เมนูเดิม (As-Is)</th>
+                <th>โครงใหม่ To-Be (Mobile Bottom Nav & Drawer)</th>
+                <th>สถานะ API</th>
+            </tr>
+            <tr>
+                <td>Dashboard / Home</td>
+                <td><strong>ภาพรวม (Dashboard)</strong> - ช่องที่ 1 ในแถบล่าง</td>
+                <td><span class="badge real">มี API จริง</span></td>
+            </tr>
+            <tr>
+                <td>Crop Cycles / Harvest / Activities</td>
+                <td><strong>ฟาร์ม (Farm)</strong> - ช่องที่ 2 ในแถบล่าง</td>
+                <td><span class="badge real">มี API จริง</span></td>
+            </tr>
+            <tr>
+                <td>Sales / Inbound / Outbound</td>
+                <td><strong>รับเข้า / ส่งออก (Transactions)</strong> - ช่องที่ 3 ในแถบล่าง</td>
+                <td><span class="badge backend">ต้องสร้าง backend (Phase 2)</span></td>
+            </tr>
+            <tr>
+                <td>Inventory / Tables / Batches</td>
+                <td><strong>สินค้า & คลัง (Inventory)</strong> - ช่องที่ 4 ในแถบล่าง</td>
+                <td><span class="badge real">มี API จริง</span></td>
+            </tr>
+            <tr>
+                <td>Costs / Reports</td>
+                <td><strong>การเงิน (Finance)</strong> - ช่องที่ 5 ในแถบล่าง</td>
+                <td><span class="badge backend">ต้องสร้าง backend (Phase 2)</span></td>
+            </tr>
+            <tr>
+                <td>Weather / Customers / Settings</td>
+                <td>เมนูแถบบน / Drawer (สภาพอากาศ, คู่ค้า, ตั้งค่า)</td>
+                <td><span class="badge real">มี API จริง</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Section 2: Wireframes -->
+    <div class="card">
+        <h2>2. Wireframe หน้าจอหลัก (Mobile-First)</h2>
+        <div class="wireframe-grid">
+            <!-- Wireframe 1: Dashboard -->
+            <div class="phone-frame">
+                <div class="phone-header">ภาพรวม (Dashboard)</div>
+                <div class="phone-body">
+                    <div style="background:var(--primary-light); padding:8px; border-radius:6px; margin-bottom:8px;">
+                        ☀️ อากาศ: 31.5°C | 65% ความชื้น
+                    </div>
+                    <div style="font-weight:bold; margin-bottom:4px;">📌 งานวันนี้ (2)</div>
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px; border-radius:4px; font-size:12px; margin-bottom:4px;">☑ ตรวจ EC/pH Table A1</div>
+                    <div style="font-weight:bold; margin-top:8px; margin-bottom:4px;">🌱 รอบปลูก Active (3)</div>
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px; border-radius:4px; font-size:12px;">Lettuce Batch 1 (Table A1)</div>
+                </div>
+                <div class="phone-nav">
+                    <span>🏠 ภาพรวม</span>
+                    <span>🌱 ฟาร์ม</span>
+                    <span>📦 ธุรกรรม</span>
+                    <span>📊 คลัง</span>
+                    <span>💰 การเงิน</span>
+                </div>
+            </div>
+
+            <!-- Wireframe 2: Inventory -->
+            <div class="phone-frame">
+                <div class="phone-header">สินค้า & คลัง</div>
+                <div class="phone-body">
+                    <input type="text" placeholder="🔍 ค้นหาสินค้า..." style="width:100%; padding:6px; box-sizing:border-box; margin-bottom:8px;">
+                    <div style="display:flex; gap:4px; margin-bottom:8px; font-size:11px;">
+                        <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:10px;">ทั้งหมด</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">ปุ๋ย/ยา</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">เมล็ด</span>
+                    </div>
+                    <div style="border:1px solid var(--border-color); padding:8px; border-radius:6px; margin-bottom:6px;">
+                        <strong>Calcium Nitrate (A)</strong><br>
+                        <small>คงเหลือ: 5,000 ml (เตือน: ปกติ)</small>
+                    </div>
+                    <div style="border:1px solid var(--border-color); padding:8px; border-radius:6px;">
+                        <strong>Iron Chelate</strong><br>
+                        <small>คงเหลือ: 450 g (เตือน: ใกล้หมด ⚠️)</small>
+                    </div>
+                </div>
+                <div class="phone-nav">
+                    <span>🏠 ภาพรวม</span>
+                    <span>🌱 ฟาร์ม</span>
+                    <span>📦 ธุรกรรม</span>
+                    <span>📊 คลัง</span>
+                    <span>💰 การเงิน</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Owner vs Developer Masking View -->
+    <div class="card">
+        <h2>3. มุมมองข้อมูลลับ (Owner vs Developer View)</h2>
+        <table>
+            <tr>
+                <th>ข้อมูล / ฟิลด์</th>
+                <th>มุมมอง Owner (เจ้าของฟาร์ม)</th>
+                <th>มุมมอง Developer (นักพัฒนา)</th>
+            </tr>
+            <tr>
+                <td>ชื่อลูกค้า / ช่องทางติดต่อ</td>
+                <td>Green Fresh Mart (081-234-5678)</td>
+                <td><span style="color:gray;">██████████ (Masked)</span></td>
+            </tr>
+            <tr>
+                <td>ยอดรายได้ / การเงิน</td>
+                <td>฿125,000</td>
+                <td><span style="color:gray;">🔒 ข้อมูลเข้ารหัส</span></td>
+            </tr>
+            <tr>
+                <td>ชื่อปุ๋ย/ยาผสมลับ</td>
+                <td>Formula Hydro-A Special</td>
+                <td><span style="color:gray;">[CIPHERTEXT_HASH]</span></td>
+            </tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>

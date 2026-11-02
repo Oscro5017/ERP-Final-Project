@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Developer Desktop | ERP Farm Wireframes</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f2f5f2;
+      --paper: #fff;
+      --ink: #1d2922;
+      --muted: #64736a;
+      --line: #cbd4ce;
+      --soft: #e9eeea;
+      --green: #2f7250;
+      --green-bg: #dcefe3;
+      --yellow: #8a6413;
+      --yellow-bg: #f8edc8;
+      --red: #9c3939;
+      --red-bg: #f6dddd;
+      --accent: #c8dcca;
+      font-family: "Noto Sans Thai", Tahoma, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #151a17;
+        --paper: #202823;
+        --ink: #edf2ee;
+        --muted: #a4b0a8;
+        --line: #48554c;
+        --soft: #2c3730;
+        --green: #b5e0c1;
+        --green-bg: #234333;
+        --yellow: #f1d78c;
+        --yellow-bg: #493c1d;
+        --red: #f0aaaa;
+        --red-bg: #4a2828;
+        --accent: #304638;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.55; }
+    a { color: inherit; }
+    .top { background: var(--paper); border-bottom: 1px solid var(--line); padding: 18px max(20px, calc((100% - 1440px)/2)); }
+    .top h1 { margin: 0; font-size: 22px; }
+    .top p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .wrap { max-width: 1440px; margin: auto; padding: 20px; }
+    .section { margin: 22px 0 34px; }
+    .section h2 { font-size: 19px; margin: 0 0 12px; }
+    .section h3 { font-size: 15px; margin: 0 0 10px; }
+    .muted { color: var(--muted); }
+    .note { border-left: 4px solid var(--yellow); background: var(--yellow-bg); padding: 11px 14px; border-radius: 4px; }
+    .sitemaps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .panel, .screen { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+    .panel { padding: 16px; }
+    .tree { display: grid; gap: 6px; }
+    .tree div { padding: 7px 10px; background: var(--soft); border-radius: 3px; }
+    .tree .child { margin-left: 18px; border-left: 2px solid var(--line); }
+    .tree .old { text-decoration: line-through; color: var(--muted); }
+    .tree .new { border-left: 4px solid var(--green); }
+    .screen-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .screen { overflow: hidden; }
+    .screen-head { padding: 10px 13px; border-bottom: 1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap: 8px; }
+    .screen-head strong { font-size: 14px; }
+    .screen-body { padding: 12px; }
+    .desktop { min-height: 235px; display: grid; grid-template-columns: 112px 1fr; border: 1px solid var(--line); background: var(--bg); }
+    .side { background: var(--soft); border-right: 1px solid var(--line); padding: 8px 6px; font-size: 10px; }
+    .side span { display:block; padding: 4px 5px; margin: 2px 0; border-radius: 3px; }
+    .side .active { background: var(--accent); font-weight: 700; }
+    .content { padding: 9px; min-width: 0; }
+    .bar { min-height: 25px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); margin-bottom: 7px; font-size: 10px; }
+    .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 7px; }
+    .row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .box { min-height: 42px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); padding: 6px; font-size: 10px; overflow-wrap: anywhere; }
+    .box.tall { min-height: 78px; }
+    .dashboard-charts { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; margin:7px 0; }
+    .chart-box { min-width:0; border:1px solid var(--line); border-radius:3px; background:var(--paper); padding:6px; font-size:9px; }
+    .chart-title { display:flex; justify-content:space-between; gap:4px; font-weight:700; }
+    .chart-note { color:var(--muted); font-size:8px; margin-top:4px; }
+    .donut-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
+    .donut { width:62px; height:62px; flex:none; border-radius:50%; background:conic-gradient(var(--green) 0 20%, #7fae8d 20% 39%, #d2b55a 39% 57%, #7795a2 57% 77%, #b7c3ba 77% 100%); position:relative; }
+    .donut:after { content:""; position:absolute; inset:15px; border-radius:50%; background:var(--paper); }
+    .legend { display:grid; grid-template-columns:1fr 1fr; gap:2px 6px; color:var(--muted); font-size:8px; }
+    .legend span:before { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:4px; background:var(--green); }
+    .legend span:nth-child(2):before { background:#7fae8d; }
+    .legend span:nth-child(3):before { background:#d2b55a; }
+    .legend span:nth-child(4):before { background:#7795a2; }
+    .legend span:nth-child(5):before { background:#b7c3ba; }
+    .weather-chart { width:100%; height:67px; display:block; margin-top:3px; }
+    .chart-gridline { stroke:var(--line); stroke-width:1; stroke-dasharray:3 3; }
+    .chart-max { fill:none; stroke:var(--green); stroke-width:2.5; }
+    .chart-min { fill:none; stroke:#7395a1; stroke-width:2.5; }
+    .chart-label { fill:var(--muted); font:7px Tahoma, sans-serif; }
+    .chart-legend { display:flex; gap:8px; color:var(--muted); font-size:8px; }
+    .chart-legend span:before { content:""; display:inline-block; width:8px; height:2px; margin:0 3px 2px 0; background:var(--green); }
+    .chart-legend span:last-child:before { background:#7395a1; }
+    .table { border: 1px solid var(--line); background: var(--paper); }
+    .table div { display:grid; grid-template-columns: 1.2fr 1fr .8fr .8fr; gap: 4px; padding: 5px 6px; border-bottom: 1px solid var(--line); font-size: 9px; }
+    .table div:last-child { border: 0; }
+    .tag { display:inline-block; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: 700; white-space: nowrap; }
+    .api { color: var(--green); background: var(--green-bg); }
+    .mock { color: var(--yellow); background: var(--yellow-bg); }
+    .wait { color: var(--red); background: var(--red-bg); }
+    .mobile-note { display:none; }
+    .compare { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .compare .box { min-height: 84px; font-size: 12px; }
+    .foot { color: var(--muted); font-size: 11px; margin-top: 7px; }
+    @media (max-width: 780px) {
+      .wrap { padding: 14px; }
+      .sitemaps, .screen-grid, .compare { grid-template-columns: 1fr; }
+      .desktop { grid-template-columns: 78px 1fr; }
+      .side { font-size: 8px; }
+      .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-charts { grid-template-columns:1fr; }
+      .mobile-note { display:block; }
+    }
+    @media print {
+      :root { color-scheme: light; }
+      body { background: white; color: #1d2922; }
+      .panel, .screen { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>ERP ฟาร์ม | Wireframes: Developer Desktop</h1>
+    <p>As-Is เทียบ To-Be · desktop-first · ข้อมูลทั้งหมดเป็นโครงสมมติ ไม่มีข้อมูลจริง</p>
+  </header>
+  <main class="wrap">
+    <section class="section">
+      <h2>ขอบเขตที่ตรวจพบ</h2>
+      <div class="note">Production front มี React/Vite app เดียว; `code_prototype` ไม่อยู่ใน workspace นี้ จึงตรวจ entry point ของต้นแบบแยกไม่ได้. แถบสถานะ: <span class="tag api">เขียว: มี API จริง</span> <span class="tag mock">เหลือง: mock/ตัวอย่าง</span> <span class="tag wait">แดง: ต้องรอ backend</span></div>
+    </section>
+
+    <section class="section">
+      <h2>แผนผังเมนู: As-Is / To-Be</h2>
+      <div class="sitemaps">
+        <article class="panel">
+          <h3>As-Is: 11 routes หลัง login</h3>
+          <div class="tree">
+            <div class="old">ภาพรวม /</div><div class="old">แปลงเพาะปลูก /plots</div><div class="tree child old">รายละเอียด /plots/:id</div>
+            <div class="old">กิจกรรม /activities</div><div class="old">ผลผลิต /harvest</div><div class="old">คลังสินค้า /inventory</div>
+            <div class="old">การขาย /sales</div><div class="old">ต้นทุนและกำไร /costs</div><div class="old">รายงาน /reports</div>
+            <div class="old">ผู้ใช้งาน /users</div><div class="old">ตั้งค่า /settings</div>
+            <div class="muted">Menu 10 entries; plot detail ไม่อยู่ใน Sidebar</div>
+          </div>
+        </article>
+        <article class="panel">
+          <h3>To-Be: เมนูหลัก 6 กลุ่ม</h3>
+          <div class="tree">
+            <div class="new">ภาพรวม /</div><div class="new">ฟาร์ม /farm/cycles · tab กิจกรรม</div>
+            <div class="new">สภาพอากาศ /weather</div><div class="new">สินค้า &amp; คลัง /products</div>
+            <div class="new">รับเข้า / ส่งออก /trade/inbound · tab ส่งออก</div><div class="new">การเงิน /finance</div>
+            <div class="child">ข้อมูลหลัก: คู่ค้า /partners · ตั้งค่า /settings</div>
+            <div class="child">Developer: สถานะระบบ /developer/system</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>To-Be: Desktop wireframes</h2>
+      <div class="screen-grid">
+        <article class="screen">
+          <div class="screen-head"><strong>ภาพรวม</strong><span class="tag api">cycles / tasks / weather</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span class="active">ภาพรวม</span><span>ฟาร์ม</span><span>อากาศ</span><span>สินค้า &amp; คลัง</span><span>รับเข้า / ส่งออก</span><span>การเงิน</span><span>สถานะระบบ</span></aside><div class="content"><div class="bar">DEVELOPER · ชื่อ/ข้อความ/เงิน masked; ปริมาณและ stock เปิด</div><div class="row"><div class="box api">รอบปลูก active<br>นับจาก /crop-cycles</div><div class="box api">งาน 7 วัน<br>title ลับ: ข้อมูลเข้ารหัส</div><div class="box api">อากาศวันนี้<br>forecast live</div></div><div class="dashboard-charts">
+            <section class="chart-box" aria-label="กราฟโดนัทสถานะรอบปลูก จาก crop cycles">
+              <div class="chart-title"><span>รอบปลูกตามสถานะ</span><span class="tag api">/crop-cycles</span></div>
+              <div class="donut-row"><div class="donut" role="img" aria-label="ตัวอย่างรูปทรงกราฟโดนัท ไม่ใช่สัดส่วนข้อมูลจริง"></div><div class="legend"><span>อนุบาล</span><span>สร้างพุ่ม</span><span>พร้อมเก็บ</span><span>เก็บเกี่ยว</span><span>ว่าง</span></div></div>
+              <div class="chart-note">สัดส่วนในภาพเป็นโครงร่าง; ค่าจริงนับจาก API</div>
+            </section>
+            <section class="chart-box" aria-label="กราฟเส้นอุณหภูมิสูงสุดและต่ำสุดจาก forecast 7 วัน">
+              <div class="chart-title"><span>อุณหภูมิ 7 วัน</span><span class="tag api">/weather/forecast</span></div>
+              <svg class="weather-chart" viewBox="0 0 260 82" role="img" aria-label="ตัวอย่างเส้นอุณหภูมิ ไม่ใช่ข้อมูลจริง">
+                <line class="chart-gridline" x1="20" y1="15" x2="252" y2="15"/><line class="chart-gridline" x1="20" y1="38" x2="252" y2="38"/><line class="chart-gridline" x1="20" y1="61" x2="252" y2="61"/>
+                <polyline class="chart-max" points="22,28 60,22 98,30 136,17 174,25 212,19 250,27"/><polyline class="chart-min" points="22,58 60,53 98,60 136,48 174,55 212,51 250,57"/>
+                <text class="chart-label" x="22" y="76">วันนี้</text><text class="chart-label" x="92" y="76">+2 วัน</text><text class="chart-label" x="164" y="76">+4 วัน</text><text class="chart-label" x="232" y="76">+6</text>
+              </svg>
+              <div class="chart-legend"><span>สูงสุด</span><span>ต่ำสุด</span></div>
+              <div class="chart-note">เส้นเป็นโครงร่าง; แสดงค่าจริงจาก forecast ไม่ใช่ sensor</div>
+            </section>
+          </div><div class="row two"><div class="box tall api">งานใกล้ถึงกำหนด<br>รายการจาก /tasks · title manual แสดง “ข้อมูลเข้ารหัส”</div><div class="box tall wait">Job / backup status<br>ยังไม่มี API ตรวจสอบ<br>การเงิน: ยังไม่มี API และไม่วาดกราฟตัวเลข</div></div></div></div><p class="foot">กราฟ 2 รายการใช้ข้อมูลไม่ลับจาก API จริง; รูปทรงตัวอย่างไม่ใช่ค่าจริง. ไม่มี revenue/profit/stock mock chart ใน developer overview.</p></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>ฟาร์ม: รอบปลูก + กิจกรรม</strong><span class="tag api">API จริง</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span class="active">ฟาร์ม</span><span>รอบปลูก</span><span>กิจกรรม</span></aside><div class="content"><div class="bar">[รอบปลูก] [กิจกรรม] · ค้นหา / status · + เพิ่มรอบ</div><div class="table"><div><b>รอบ/โต๊ะ</b><b>พืช</b><b>เริ่ม</b><b>สถานะ</b></div><div><span>Cycle ตัวอย่าง</span><span>พืช A</span><span>วันที่</span><span>อนุบาล</span></div><div><span>Cycle ตัวอย่าง</span><span>พืช B</span><span>วันที่</span><span>เก็บเกี่ยว</span></div></div><div class="bar">รายละเอียด: status timeline · ผลผลิต · Input application</div><div class="box">ชื่อปุ๋ย/ยาและ note: <b>ข้อมูลเข้ารหัส</b> · ปริมาณ: เปิดหลัง D4 migration/API contract · unit/category/date เปิด</div></div></div><p class="foot">Activities: manual title masked; ปุ่ม edit แสดงตาม permission/API</p></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>สภาพอากาศ</strong><span class="tag api">forecast / history / sensors</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span class="active">สภาพอากาศ</span><span>วันนี้</span><span>พยากรณ์</span><span>ย้อนหลัง</span></aside><div class="content"><div class="bar">[วันนี้] [พยากรณ์ 7 วัน] [ย้อนหลัง]</div><div class="row"><div class="box api">วันนี้<br>temp / rain</div><div class="box api">humidity<br>forecast</div><div class="box api">condition<br>source</div></div><div class="box tall api">Forecast 7 วัน · ตาราง/กราฟเรียบง่าย</div><div class="box">History: Open-Meteo archive/model-based; ไม่ใช่ sensor ground truth</div><div class="box wait">Snapshot compare / Recommendation: ยังไม่มี read API หรือ logic</div></div></div></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>สินค้า &amp; คลัง</strong><span class="tag wait">ต้องสร้าง backend Phase 2</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span>ฟาร์ม</span><span class="active">สินค้า &amp; คลัง</span></aside><div class="content"><div class="bar">ประเภท: ทั้งหมด · ผัก · เมล็ด · ปุ๋ย · ยา · ปุ๋ยผสม　ค้นหา　+ เพิ่ม</div><div class="table"><div><b>ชื่อ</b><b>ประเภท</b><b>คงเหลือ</b><b>สถานะ</b></div><div><span>ข้อมูลเข้ารหัส*</span><span>ปุ๋ย</span><span>ยอด</span><span>ใกล้หมด</span></div><div><span>สินค้า A</span><span>ผัก</span><span>ไม่นับ</span><span>ขาย</span></div></div><div class="bar">Movement detail: source type/id · ปรับยอดตามนับจริง</div></div></div><p class="foot">* owner เห็นชื่อ; developer เห็น label. stock balance/category/unit ไม่ mask.</p></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>รับเข้า / ส่งออก</strong><span class="tag wait">ต้องสร้าง backend Phase 2</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span class="active">รับเข้า / ส่งออก</span><span>รับเข้า</span><span>ส่งออก</span></aside><div class="content"><div class="bar">[รับเข้า] [ส่งออก] · ช่วงวันที่ · คู่ค้า · สินค้า · + บันทึก</div><div class="table"><div><b>วันที่</b><b>คู่ค้า</b><b>รายการ</b><b>จำนวน</b></div><div><span>วันที่</span><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span></div></div><div class="row two"><div class="box tall">Inbound form<br>supplier + เพิ่มใหม่<br>product / quantity / unit / note</div><div class="box tall">Outbound form<br>customer + location + price<br>contract/order เมื่อมี backend</div></div></div></div><p class="foot">คน/สถานที่/note/ราคา และ fertilizer quantity เป็นข้อมูลลับสำหรับ developer.</p></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>การเงิน</strong><span class="tag wait">ต้องสร้าง backend Phase 2</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span class="active">การเงิน</span><span>ไตรมาส</span><span>ฤดู</span><span>รายงาน</span></aside><div class="content"><div class="bar">period / quarter / season / area filters (backend aggregation)</div><div class="row"><div class="box wait">รายรับ<br>ข้อมูลเข้ารหัส</div><div class="box wait">ต้นทุน<br>ข้อมูลเข้ารหัส</div><div class="box wait">กำไร<br>ข้อมูลเข้ารหัส</div></div><div class="row two"><div class="box tall">Price trend<br>ข้อมูลเข้ารหัส</div><div class="box tall">Customer comparison<br>ข้อมูลเข้ารหัส</div></div><div class="bar">ต้นทาง: inbound · outbound · labor · task expense · other</div></div></div><p class="foot">ไม่ render value/axis/tooltip ที่ช่วยอนุมานจำนวนเงินจริงสำหรับ developer.</p></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>คู่ค้า</strong><span class="tag api">Customer API</span> <span class="tag wait">Supplier API pending</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span class="active">คู่ค้า</span><span>ลูกค้า</span><span>ซัพพลายเออร์</span></aside><div class="content"><div class="bar">[ลูกค้า] [ซัพพลายเออร์] · ค้นหา · + เพิ่มคู่ค้า</div><div class="table"><div><b>ชื่อ</b><b>ติดต่อ</b><b>ที่อยู่</b><b>ลิงก์</b></div><div><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span><span>เปิด</span></div><div><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span><span>ข้อมูลเข้ารหัส</span><span>เปิด</span></div></div><div class="bar">Confirmation ใช้ข้อความคงที่ ไม่เอา token เข้า dialog</div></div></div></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>ตั้งค่า / ผู้ใช้</strong><span class="tag wait">Owner only · API pending</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ข้อมูลหลัก</span><span class="active">ตั้งค่า</span><span>โปรไฟล์</span><span>ผู้ใช้</span></aside><div class="content"><div class="bar">[โปรไฟล์] [ผู้ใช้]</div><div class="row two"><div class="box tall wait">Profile settings<br>ยังไม่มี settings API</div><div class="box tall wait">User management<br>ยังไม่มี user API<br>ไม่แสดง mock roster</div></div><div class="bar">Developer: access denied · กลับสถานะระบบ</div></div></div></div>
+        </article>
+
+        <article class="screen">
+          <div class="screen-head"><strong>สถานะระบบ</strong><span class="tag wait">บางส่วนไม่มี API</span></div>
+          <div class="screen-body"><div class="desktop"><aside class="side"><span>ภาพรวม</span><span>ฟาร์ม</span><span class="active">สถานะระบบ</span><span>Mask checks</span></aside><div class="content"><div class="row"><div class="box api">Weather GET<br>API จริง</div><div class="box api">Sensor GET<br>API จริง</div><div class="box wait">Last job run<br>ไม่มี endpoint</div></div><div class="row two"><div class="box tall wait">ForecastSnapshot read<br>ไม่มี endpoint</div><div class="box tall wait">Backup/restore status<br>ตรวจจาก browser ไม่ได้</div></div><div class="bar">Mask test: customer / task / input / aggregate · synthetic fixture only</div></div></div></div>
+        </article>
+      </div>
+      <p class="mobile-note muted">จอเล็กใช้ดูเอกสารเท่านั้น; wireframe ยังคงเป็น desktop-first ตาม SCOPE developer-desktop.</p>
+    </section>
+
+    <section class="section">
+      <h2>ข้อมูลลับ: Owner เทียบ Developer</h2>
+      <div class="compare">
+        <article class="panel"><h3>Owner</h3><div class="box">ชื่อคู่ค้า: <b>ตัวอย่างชื่อสมมติ</b><br>ชื่อปุ๋ย/ยา: <b>สูตรตัวอย่าง</b><br>ปริมาณที่ใช้: <b>ตัวเลขสมมติ</b><br>ยอดเงิน: <b>ตัวเลขสมมติ</b></div><p class="foot">แสดง plaintext ตามสิทธิ์ owner; เป็นข้อมูลจำลองสำหรับ wireframe เท่านั้น.</p></article>
+        <article class="panel"><h3>Developer</h3><div class="box">ชื่อคู่ค้า: <b>ข้อมูลเข้ารหัส</b><br>ชื่อปุ๋ย/ยาและ note: <b>ข้อมูลเข้ารหัส</b><br>ปริมาณ/ยอดคงเหลือ: <b>ตัวเลขเปิดหลัง API migration</b><br>ยอดเงิน/aggregate: <b>ข้อมูลเข้ารหัส</b><br>status: <span class="tag api">is_masked ตามฟิลด์</span></div><p class="foot">ไม่ใส่ token เต็มใน cell/dialog/toast/error; quantity จะเปิดหลัง D4 migration/API contract.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>เส้นทางหลักสำหรับพัฒนา</h2>
+      <div class="panel">
+        <p><b>ก่อนเดโม:</b> nav/redirect → Farm + Activities → Weather/history → Overview ลด mock → Customer panel ปลอดภัย → Developer status shell.</p>
+        <p><b>รอ Phase 2:</b> ตัดสิน product + StockMovement + InputCatalog ก่อน → ระดับ A รับเข้า/ส่งออก/input/ปรับยอด → ระดับ B เมล็ด → ระดับ C ใบผสม → Finance/D5/Contract/Order.</p>
+        <p class="muted">ยืนยันตัวเลขด้วย backend aggregation; UI แสดง unavailable เมื่อ API ยังไม่มี. ไม่แก้โค้ดจากไฟล์ wireframe นี้.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

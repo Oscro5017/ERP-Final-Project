@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Organic Farm — Wireframes & Sitemap (owner-mobile)</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary: #2e7d32;
+            --primary-light: #e8f5e9;
+            --border-color: #cccccc;
+            --badge-real: #2e7d32;
+            --badge-mock: #f57c00;
+            --badge-backend: #d32f2f;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-color: #e0e0e0;
+                --primary: #4caf50;
+                --primary-light: #1b381b;
+                --border-color: #444444;
+            }
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+        h1, h2, h3 { color: var(--primary); }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            margin-right: 4px;
+        }
+        .badge.real { background-color: var(--badge-real); }
+        .badge.mock { background-color: var(--badge-mock); }
+        .badge.backend { background-color: var(--badge-backend); }
+
+        .wireframe-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .phone-frame {
+            width: 320px;
+            height: 560px;
+            border: 4px solid #333;
+            border-radius: 28px;
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+        }
+        .phone-header {
+            background: var(--primary);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .phone-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+        .phone-nav {
+            height: 50px;
+            background: #eee;
+            border-top: 1px solid #ccc;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 10px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+        th { background-color: var(--primary-light); }
+        .wireframe-card {
+            border: 1px dashed var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.02);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>ERP Organic Farm — Wireframes & Sitemap (owner-mobile)</h1>
+    <p><strong>Scope</strong>: <code>owner-mobile</code> (ฝั่งเจ้าของฟาร์ม มือถือเป็นหลัก) | **นโยบาย Masking**: ปิดบังข้อมูลคน, ชื่อปุ๋ย/ยา/ปุ๋ยผสม, note, manual task title, และจำนวนเงินทั้งหมด</p>
+
+    <!-- Section 1: Sitemap -->
+    <div class="card">
+        <h2>1. แผนผังเมนู (Sitemap) As-Is (11 Routes) vs To-Be</h2>
+        <table>
+            <tr>
+                <th>Route เดิม (As-Is)</th>
+                <th>เมนูใหม่ To-Be (Mobile Bottom Nav & Drawer)</th>
+                <th>สถานะข้อมูล</th>
+            </tr>
+            <tr><td>/ (Dashboard)</td><td><strong>ภาพรวม</strong> (ช่อง 1 แถบล่าง)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/plots, /plots/:id</td><td><strong>ฟาร์ม</strong> (ช่อง 2 แถบล่าง - แท็บรอบปลูก)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/activities</td><td><strong>ฟาร์ม</strong> (ช่อง 2 แถบล่าง - แท็บกิจกรรม)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/harvest</td><td><strong>ฟาร์ม</strong> (สถานะในรอบปลูก)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/inventory</td><td><strong>สินค้า & คลัง</strong> (ช่อง 4 แถบล่าง)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/sales</td><td><strong>รับเข้า / ส่งออก</strong> (ช่อง 3 แถบล่าง - แท็บส่งออก)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/costs, /reports</td><td><strong>การเงิน</strong> (ช่อง 5 แถบล่าง)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/users, /settings</td><td><strong>ตั้งค่า & โปรไฟล์</strong> (เมนูแถบบน)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+            <tr><td>/weather</td><td><strong>สภาพอากาศ</strong> (เมนูแถบบน / การ์ดหน้าภาพรวม)</td><td><span class="badge backend">รอ Backend</span></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 2: Wireframes for all 8 pages -->
+    <div class="card">
+        <h2>2. Wireframe หน้าจอทั้ง 8 หน้า (Mobile-First)</h2>
+        <div class="wireframe-grid">
+
+            <!-- 1. ภาพรวม -->
+            <div class="phone-frame">
+                <div class="phone-header">1. ภาพรวม (Dashboard)</div>
+                <div class="phone-body">
+                    <div class="wireframe-card">☀️ อากาศที่ฟาร์ม: 31.5°C | แดดจัด</div>
+                    <div class="wireframe-card"><strong>📌 งานวันนี้ (ตัวอย่าง)</strong><br><small>☑ ตรวจแปลง A1</small></div>
+                    <div class="wireframe-card">
+                        <strong>📊 ผลผลิตรายสัปดาห์ (กก.) [ตัวอย่าง]</strong>
+                        <svg viewBox="0 0 200 80" style="width:100%; height:60px; margin-top:4px;">
+                            <rect x="10" y="30" width="25" height="40" fill="#4caf50" rx="3" />
+                            <rect x="45" y="20" width="25" height="50" fill="#4caf50" rx="3" />
+                            <rect x="80" y="10" width="25" height="60" fill="#2e7d32" rx="3" />
+                            <rect x="115" y="25" width="25" height="45" fill="#4caf50" rx="3" />
+                            <rect x="150" y="15" width="25" height="55" fill="#2e7d32" rx="3" />
+                            <text x="22" y="78" font-size="8" fill="#666">W1</text>
+                            <text x="57" y="78" font-size="8" fill="#666">W2</text>
+                            <text x="92" y="78" font-size="8" fill="#666">W3</text>
+                            <text x="127" y="78" font-size="8" fill="#666">W4</text>
+                            <text x="162" y="78" font-size="8" fill="#666">W5</text>
+                        </svg>
+                    </div>
+                    <div class="wireframe-card"><strong>🌱 รอบปลูก Active (3)</strong><br><small>แปลงตัวอย่าง A1 (Lettuce)</small></div>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 2. ฟาร์ม -->
+            <div class="phone-frame">
+                <div class="phone-header">2. ฟาร์ม (รอบปลูก | กิจกรรม)</div>
+                <div class="phone-body">
+                    <div style="display:flex; gap:4px; margin-bottom:8px; font-size:11px;">
+                        <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:10px;">รอบปลูก</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">กิจกรรม</span>
+                    </div>
+                    <div class="wireframe-card"><strong>แปลงตัวอย่าง A1</strong><br><small>สถานะ: Active | พืช: ผักสลัด</small></div>
+                    <div class="wireframe-card"><strong>แปลงตัวอย่าง B1</strong><br><small>สถานะ: Harvested</small></div>
+                    <button style="width:100%; background:var(--primary); color:white; border:none; padding:6px; border-radius:4px; margin-top:8px;">+ เพิ่มรอบปลูก</button>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 3. สภาพอากาศ -->
+            <div class="phone-frame">
+                <div class="phone-header">3. สภาพอากาศที่ฟาร์ม</div>
+                <div class="phone-body">
+                    <div class="wireframe-card" style="text-align:center;">
+                        <h2>31.5°C</h2>
+                        <p>ความชื้น 65% | ลมสงบ</p>
+                    </div>
+                    <div class="wireframe-card"><strong>พยากรณ์ 7 วัน (ตัวอย่าง)</strong><br><small>จันทร์: ☀️ 32°C<br>อังคาร: 🌧️ 29°C</small></div>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 4. สินค้า & คลัง -->
+            <div class="phone-frame">
+                <div class="phone-header">4. สินค้า & คลัง</div>
+                <div class="phone-body">
+                    <div style="display:flex; gap:4px; margin-bottom:8px; font-size:11px;">
+                        <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:10px;">ทั้งหมด</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">ปุ๋ย/ยา (ลับ)</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">เมล็ด</span>
+                    </div>
+                    <div class="wireframe-card"><strong>[สินค้าตัวอย่าง ก]</strong><br><small>คงเหลือ: 5,000 ml (หน่วย: ml)</small></div>
+                    <div class="wireframe-card"><strong>[สินค้าตัวอย่าง ข]</strong><br><small>คงเหลือ: 450 g (เตือนใกล้หมด ⚠️)</small></div>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 5. รับเข้า / ส่งออก -->
+            <div class="phone-frame">
+                <div class="phone-header">5. รับเข้า / ส่งออก</div>
+                <div class="phone-body">
+                    <div style="display:flex; gap:4px; margin-bottom:8px; font-size:11px;">
+                        <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:10px;">รับเข้า</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">ส่งออก</span>
+                    </div>
+                    <div class="wireframe-card"><strong>รับเข้า #001 (ตัวอย่าง)</strong><br><small>คู่ค้า: [คู่ค้าตัวอย่าง 1]<br>วันที่: 01/03/2026</small></div>
+                    <button style="width:100%; background:var(--primary); color:white; border:none; padding:6px; border-radius:4px; margin-top:8px;">+ บันทึกรับเข้า</button>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 6. การเงิน -->
+            <div class="phone-frame">
+                <div class="phone-header">6. การเงิน</div>
+                <div class="phone-body">
+                    <div class="wireframe-card"><strong>สรุปต้นทุน - รายได้ (ตัวอย่าง)</strong><br><small>🔒 รายได้: [ข้อมูลเข้ารหัส]<br>🔒 ต้นทุน: [ข้อมูลเข้ารหัส]</small></div>
+                    <div class="wireframe-card"><strong>รายงานตามฤดูกาล</strong><br><small>ไตรมาส 1/2026: 🔒 [แสดงกราฟเข้ารหัส]</small></div>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 7. คู่ค้า -->
+            <div class="phone-frame">
+                <div class="phone-header">7. คู่ค้า (ลูกค้า | ซัพพลายเออร์)</div>
+                <div class="phone-body">
+                    <div style="display:flex; gap:4px; margin-bottom:8px; font-size:11px;">
+                        <span style="background:var(--primary); color:white; padding:2px 6px; border-radius:10px;">ลูกค้า</span>
+                        <span style="border:1px solid #ccc; padding:2px 6px; border-radius:10px;">ซัพพลายเออร์</span>
+                    </div>
+                    <div class="wireframe-card"><strong>[ลูกค้าตัวอย่าง 1]</strong><br><small>🔒 เบอร์โทร/ที่อยู่: [เข้ารหัส]</small></div>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+            <!-- 8. ตั้งค่า -->
+            <div class="phone-frame">
+                <div class="phone-header">8. ตั้งค่า & โปรไฟล์</div>
+                <div class="phone-body">
+                    <div class="wireframe-card"><strong>บัญชีผู้ใช้</strong><br><small>Role: owner (เจ้าของฟาร์ม)</small></div>
+                    <div class="wireframe-card"><strong>ตั้งค่าระบบ</strong><br><small>Backend URL & Theme</small></div>
+                    <button style="width:100%; background:#d32f2f; color:white; border:none; padding:6px; border-radius:4px; margin-top:8px;">ออกจากระบบ</button>
+                </div>
+                <div class="phone-nav"><span>🏠 ภาพรวม</span><span>🌱 ฟาร์ม</span><span>📦 ธุรกรรม</span><span>📊 คลัง</span><span>💰 การเงิน</span></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Section 3: Owner vs Developer View -->
+    <div class="card">
+        <h2>3. ตัวอย่างการแสดงผลข้อมูลลับตาม Masking Policy</h2>
+        <table>
+            <tr>
+                <th>ข้อมูล / ฟิลด์</th>
+                <th>มุมมอง Owner (เจ้าของ)</th>
+                <th>มุมมอง Developer (นักพัฒนา)</th>
+            </tr>
+            <tr>
+                <td>ข้อมูลบุคคล (ลูกค้า/ซัพพลายเออร์/คนงาน)</td>
+                <td>[ชื่อจริง และช่องทางติดต่อจริง]</td>
+                <td><span style="color:gray;">██████████ (Masked)</span></td>
+            </tr>
+            <tr>
+                <td>จำนวนเงินทุกชนิด / รายได้ / ต้นทุน</td>
+                <td>฿125,000</td>
+                <td><span style="color:gray;">🔒 [ข้อมูลเข้ารหัส]</span></td>
+            </tr>
+            <tr>
+                <td>ชื่อปุ๋ย/ยา/ปุ๋ยผสม และ note/task title</td>
+                <td>Formula Hydro-A Special</td>
+                <td><span style="color:gray;">[CIPHERTEXT_HASH]</span></td>
+            </tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>
