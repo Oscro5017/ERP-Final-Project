@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,9 +8,11 @@ from ..database import get_db
 from ..models import WeatherLog
 from ..schemas import WeatherForecastDay, WeatherLogResponse, WeatherSyncResponse
 from ..security import get_current_user
-from ..services.weather import fetch_and_save_weather_for_date, get_live_forecast, sync_yesterday_weather
+from ..services.weather import get_live_forecast, sync_yesterday_weather, weather_timeout_override
+from ..config import get_settings
 
 router = APIRouter(prefix="/weather", tags=["weather"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/forecast", response_model=list[WeatherForecastDay])
@@ -18,11 +21,13 @@ def weather_forecast(
     _=Depends(get_current_user),
 ):
     try:
-        return get_live_forecast(days=days)
-    except Exception as exc:
+        with weather_timeout_override(get_settings().weather_request_timeout_seconds):
+            return get_live_forecast(days=days)
+    except Exception:
+        logger.exception("Weather forecast request failed.")
         raise HTTPException(
             status_code=503,
-            detail=f"ไม่สามารถเชื่อมต่อบริการสภาพอากาศได้: {str(exc)}",
+            detail="ไม่สามารถดึงข้อมูลพยากรณ์อากาศได้ในขณะนี้",
         )
 
 
@@ -48,13 +53,20 @@ def sync_weather(
     _=Depends(get_current_user),
 ):
     try:
-        log = sync_yesterday_weather(db)
+        with weather_timeout_override(get_settings().weather_request_timeout_seconds):
+            log = sync_yesterday_weather(db)
+        if log is None:
+            return WeatherSyncResponse(
+                message="ต้นทางยังไม่มีข้อมูลสภาพอากาศที่ครบถ้วน จึงยังไม่ได้บันทึก",
+                log=None,
+            )
         return WeatherSyncResponse(
             message="บันทึกข้อมูลสภาพอากาศของเมื่อวานสำเร็จ",
             log=log,
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception("Weather history sync request failed.")
         raise HTTPException(
             status_code=500,
-            detail=f"เกิดข้อผิดพลาดในการดึงข้อมูลสภาพอากาศ: {str(exc)}",
+            detail="เกิดข้อผิดพลาดในการบันทึกข้อมูลสภาพอากาศ",
         )

@@ -201,6 +201,7 @@ class WeatherLogResponse(BaseModel):
     rainfall: float
     condition: str
     fetched_at: datetime
+    source: str = "open-meteo-model"
 
 
 class WeatherSyncResponse(BaseModel):
