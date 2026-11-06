@@ -6,23 +6,9 @@ import Toast from '../components/Toast';
 import { api } from '../lib/api';
 import { formatThaiDate } from '../utils/dateUtils';
 
-function getDefaultDateRange() {
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 13);
-  const toDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  return { from: toDateString(from), to: toDateString(today) };
-}
-
 function Weather() {
-  const [dateRange] = useState(getDefaultDateRange);
-  const [fromDate, setFromDate] = useState(dateRange.from);
-  const [toDate, setToDate] = useState(dateRange.to);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,18 +52,9 @@ function Weather() {
   };
 
   const handleClearFilters = async () => {
-    const allLogs = await loadHistory('', '');
-    if (!allLogs) return;
-
-    if (allLogs.length === 0) {
-      setFromDate('');
-      setToDate('');
-      return;
-    }
-
-    const dates = allLogs.map((log) => log.log_date);
-    setFromDate(dates.reduce((earliest, current) => (current < earliest ? current : earliest)));
-    setToDate(dates.reduce((latest, current) => (current > latest ? current : latest)));
+    setFromDate('');
+    setToDate('');
+    await loadHistory('', '');
   };
 
   return (
@@ -87,12 +64,14 @@ function Weather() {
         <p className="text-sm text-slate-500">สภาพอากาศประจำวัน พยากรณ์ล่วงหน้า และบันทึกสภาพอากาศย้อนหลังของฟาร์ม</p>
       </div>
 
-      <WeatherWidget
-        onToast={showToast}
-        onSyncSuccess={() => loadHistory()}
-      />
+      <div id="forecast">
+        <WeatherWidget
+          onToast={showToast}
+          onSyncSuccess={() => loadHistory()}
+        />
+      </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
+      <section id="history" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-800">บันทึกสภาพอากาศย้อนหลัง</h2>

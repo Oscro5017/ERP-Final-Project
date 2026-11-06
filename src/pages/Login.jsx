@@ -3,8 +3,8 @@ import { Leaf, LockKeyhole, UserRound } from 'lucide-react';
 import { login } from '../lib/api';
 
 function Login({ onLogin, initialError = '' }) {
-  const [username, setUsername] = useState('owner');
-  const [password, setPassword] = useState('owner123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState(initialError);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

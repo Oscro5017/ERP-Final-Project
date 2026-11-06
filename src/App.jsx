@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -7,14 +7,19 @@ import Weather from './pages/Weather';
 import FarmPlots from './pages/FarmPlots';
 import PlotDetail from './pages/PlotDetail';
 import Activities from './pages/Activities';
-import Harvest from './pages/Harvest';
-import Inventory from './pages/Inventory';
-import Sales from './pages/Sales';
-import Costs from './pages/Costs';
-import Reports from './pages/Reports';
-import Users from './pages/Users';
-import Settings from './pages/Settings';
+import CustomerPanel from './components/CustomerPanel';
 import { clearToken, getToken } from './lib/api';
+
+function NotFound() {
+  return (
+    <section className="py-16 text-center">
+      <h1 className="text-xl font-semibold text-slate-800">ไม่พบหน้านี้</h1>
+      <Link to="/" className="mt-4 inline-flex rounded-lg bg-farm-700 px-4 py-2 text-sm font-medium text-white hover:bg-farm-800">
+        กลับหน้าภาพรวม
+      </Link>
+    </section>
+  );
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getToken()));
@@ -37,13 +42,9 @@ function App() {
         <Route path="/plots" element={<FarmPlots />} />
         <Route path="/plots/:id" element={<PlotDetail />} />
         <Route path="/activities" element={<Activities />} />
-        <Route path="/harvest" element={<Harvest />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/sales" element={<Sales />} />
-        <Route path="/costs" element={<Costs />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/harvest" element={<Navigate to="/plots?status=harvested" replace />} />
+        <Route path="/partners/customers" element={<CustomerPanel />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
   );

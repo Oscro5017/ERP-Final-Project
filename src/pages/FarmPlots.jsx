@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -21,8 +21,12 @@ const emptyForm = {
 
 function FarmPlots() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('ทั้งหมด');
+  const [filter, setFilter] = useState(() => {
+    const requestedStatus = searchParams.get('status');
+    return cropCycleStatuses.some((status) => status.value === requestedStatus) ? requestedStatus : 'ทั้งหมด';
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [plots, setPlots] = useState([]);

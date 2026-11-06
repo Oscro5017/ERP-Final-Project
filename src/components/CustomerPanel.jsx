@@ -74,7 +74,7 @@ function CustomerPanel() {
   };
 
   const handleDelete = async (customer) => {
-    if (!window.confirm(`ลบข้อมูลลูกค้า ${customer.name} ใช่หรือไม่`)) return;
+    if (!window.confirm('ลบข้อมูลลูกค้าที่เลือกใช่หรือไม่')) return;
     try {
       await api(`/customers/${customer.id}`, { method: 'DELETE' });
       setCustomers((current) => current.filter((item) => item.id !== customer.id));

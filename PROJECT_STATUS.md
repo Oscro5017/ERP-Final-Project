@@ -1,20 +1,24 @@
 # ERP Project Status
 
-วันที่ตรวจสอบ: 2026-10-30
+วันที่ตรวจสอบ: 2026-11-06
 
 ## ภาพรวม
 
 ระบบหลักทำงานด้วย FastAPI + SQLAlchemy backend และ React/Vite frontend โดย `ERPOganicFarm` เป็นโปรเจกต์หลัก ส่วน `code_prototype` ใช้เก็บต้นแบบ UI สำหรับเปรียบเทียบ
 
-ปัจจุบัน Phase 1b–1e มี implementation ตามขอบเขตแล้ว: Task/Weather, Chart.js/data hooks, encrypted customer/input/task data, forecast snapshots และ sensor endpoints ส่วนการทำงาน scheduled weather กับ Open-Meteo ใน environment จริงยังรอยืนยัน; Phase 2 ยังไม่เริ่ม
+ปัจจุบัน Phase 1b–1e มี implementation ตามขอบเขตแล้ว: Task/Weather, Chart.js/data hooks, encrypted customer/input/task data, forecast snapshots และ sensor endpoints. Backend hygiene H1–H6 มีการตรวจโค้ดและทดสอบใน workspace แล้ว; full backend suite ล่าสุดวันที่ 2026-11-06 ผ่าน 66 tests และมี 73 warnings. Follow-up แยก weather timeout/cache, Cloudflare proxy IP/backoff, production legacy-password guard, startup behavior เมื่อไม่มี BACKUP_DIR, SPA refresh ที่ `/weather` และค่าเริ่มต้นประวัติอากาศเป็นทั้งหมดแล้ว. ยังไม่ได้เปิดหรือแก้ `erp.db` จริง, ยังไม่ได้รัน foreign-key audit กับสำเนาฐานข้อมูลจริงหรือสั่ง historical re-sync; ให้ทำ audit ก่อน deploy การบังคับ foreign keys. Phase 2 ยังไม่เริ่ม
 
-> **วันที่ปรับปรุงล่าสุด**: 2026-10-30  
-> **รายละเอียด**: Phase 1e เข้ารหัสข้อมูลปุ๋ย/กิจกรรมและ manual task, เพิ่ม forecast snapshots, sensor ingestion และ Recommendation data hook; live migration สำเร็จ, backend tests 26/26 และ frontend build ผ่าน
+> **วันที่ปรับปรุงล่าสุด**: 2026-11-06
+> **รายละเอียด**: แก้ SPA fallback ให้เปิด/refresh `/weather` ได้โดยไม่กลืน API 404; หน้า weather history เริ่มต้นแบบไม่กรองและปุ่มล้างตัวกรองล้าง/โหลดประวัติทั้งหมด. Full backend suite รันจริงวันที่ 2026-11-06: 66 passed, 73 warnings; frontend build ผ่าน. ไม่ได้เปิดหรือแก้ `erp.db` จริง. งาน backend hygiene H1–H6 ยังคงมีผลตามบันทึกรอบก่อน.
 
 ## ประวัติการปรับปรุงระบบ (Revision History)
 
 | วันที่ (Date) | รายละเอียดการปรับปรุง (Changes) | AI Model | โปรแกรม / เครื่องมือ (Platform) |
 |---|---|---|---|
+| 2026-11-06 | แก้ `/weather` SPA refresh fallback และเปลี่ยน weather history ให้แสดงทุกบันทึกเป็นค่าเริ่มต้น; backend tests 66 passed, 73 warnings; frontend build ผ่าน | GitHub Copilot | VS Code |
+| 2026-11-05 | ตรวจ/ปิดงาน backend hygiene H1–H6 และ follow-up; full backend suite รันจริง 65 passed, 73 warnings; ไม่ได้เปิด/แก้ `erp.db` จริง, ไม่ได้รัน foreign-key audit กับสำเนาฐานข้อมูลจริงหรือ historical re-sync | GitHub Copilot | VS Code |
+| 2026-11-03 | ตรวจพบ scheduled weather sync บน Pi ได้ HTTP 503 จาก Open-Meteo; sync วันที่ 2026-11-02 สำเร็จภายหลังและมีประวัติ 17 วัน; เพิ่ม retry สูงสุด 3 attempts และ daily 14-day catch-up เวลา 08:30 ใน workspace; tests weather/scheduler/catch-up 23 passed; รอ deploy ไป Pi | Copilot | VS Code |
+| 2026-11-02 | Backend hygiene H1–H6: SQLite PRAGMAs/FK audit utility, scheduler recovery, weather validation/cache, production hardening, backup config และ deployment docs; full backend tests 56 passed, 73 warnings; ไม่ได้ตรวจ `erp.db` จริงหรือรัน historical re-sync | Codex | Codex |
 | 2026-10-30 | Phase 1e: เข้ารหัส input/catalog/manual task, เพิ่ม forecast snapshots, weather catch-up, sensor API และ Recommendation model; สำรอง/มigrate DB จริง, tests 26/26 และ frontend build ผ่าน | - | GitHub Copilot |
 | 2026-10-20 | Phase 1d: เข้ารหัส contact และตัด plaintext column, backup/migration ตรวจ round-trip, customer ciphertext แยก role, secure number helpers, tests ผ่าน | - | GitHub Copilot |
 | 2026-10-20 | Phase 1c: ย้ายกราฟ Recharts ไป Chart.js, เพิ่ม yield/status history/timestamps/soft delete, migrate SQLite เดิมและ backfill; tests 10/10, build ผ่าน | - | GitHub Copilot |
@@ -258,9 +262,10 @@ GET/POST       /sensors/readings
 - หน้า `/activities` ใช้ Task API จริง พร้อมค้นหา/กรอง/เพิ่ม/แก้ไข/ลบ/เปลี่ยนสถานะ
 - Vite dev proxy รองรับ `/tasks`, `/weather`, `/sensors`, `/input-applications` และ `/input-catalog`
 - พิกัด Open-Meteo ตั้งเป็นจุดกึ่งกลางฟาร์มที่เจ้าของยืนยันแล้ว (18.8072866, 99.0930437)
-- ตั้งเวลา daily weather sync เป็น 08:00 ตามเวลา `Asia/Bangkok`; ยังต้องตรวจการรันจริงหลัง restart backend
+- ตั้งเวลา daily weather sync เป็น 08:00 ตามเวลา `Asia/Bangkok`; log บน Pi ยืนยันเหตุการณ์ Open-Meteo 503 วันที่ 2026-11-03 และผู้ใช้ซิงก์วันที่ 2026-11-02 สำเร็จภายหลัง
+- โค้ด workspace เพิ่ม retry สูงสุด 3 attempts (backoff 1 และ 2 วินาที) และ daily catch-up เวลา 08:30 เติมข้อมูลที่ขาดย้อนหลัง 14 วัน; ต้อง deploy/restart บน Pi ก่อนจึงมีผลใน production
 - ForecastSnapshot ใช้ service `get_live_forecast` เดียวกับ `/weather/forecast` และบันทึกทุกวันเวลา 08:05; job failure ถูก log และไม่ทำให้ backend ล่ม
-- ตอน startup มี background catch-up เติม WeatherLog ที่ขาดใน 14 วันก่อนหน้าโดยไม่บล็อกการเริ่ม API
+- ตอน startup มี background catch-up เติม WeatherLog ที่ขาดใน 14 วันก่อนหน้าโดยไม่บล็อกการเริ่ม API; เพิ่ม daily catch-up เวลา 08:30 เพื่อ retry วันที่ยังขาดโดยไม่ต้อง restart ระบบ
 - `POST /sensors/readings` ใช้ `X-Device-Token` แบบ constant-time; ถ้าไม่ได้ตั้ง `DEVICE_TOKEN` จะตอบ 503; `GET` ต้องใช้ JWT
 
 ### Customers

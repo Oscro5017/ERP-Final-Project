@@ -12,7 +12,7 @@ const apiPrefixes = [
   '/input-applications',
   '/input-catalog',
   '/tasks',
-  '/weather',
+  '/weather/',
   '/sensors',
 ];
 

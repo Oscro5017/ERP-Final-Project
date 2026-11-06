@@ -10,7 +10,7 @@ function DashboardLayout({ children, onLogout }) {
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
       <div className={`transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-72'}`}>
-        <Navbar onMenuToggle={() => setCollapsed((prev) => !prev)} collapsed={collapsed} onLogout={onLogout} />
+        <Navbar onMenuToggle={() => setCollapsed((prev) => !prev)} onLogout={onLogout} />
         <main className="p-4 md:p-6 lg:p-8">
           {children || <Outlet />}
         </main>
