@@ -119,6 +119,25 @@ def test_customer_contact_migration_stops_if_backup_fails():
     engine.dispose()
 
 
+def test_customer_contact_migration_requires_configured_backup_dir(tmp_path, monkeypatch):
+    from app import config
+
+    database_path = tmp_path / "requires-backup.db"
+    engine = create_engine(f"sqlite:///{database_path}")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE TABLE customers (id INTEGER PRIMARY KEY, contact TEXT NOT NULL)")
+        connection.exec_driver_sql("INSERT INTO customers (id, contact) VALUES (1, 'PRIVATE-TEST-DATA')")
+    monkeypatch.setattr(config, "get_settings", lambda: type("Settings", (), {"backup_dir": None})())
+
+    with pytest.raises(RuntimeError, match="BACKUP_DIR"):
+        migrate_customer_contact_encryption(engine)
+    with engine.connect() as connection:
+        columns = {column["name"] for column in inspect(connection).get_columns("customers")}
+        assert "contact" in columns
+        assert "contact_encrypted" not in columns
+    engine.dispose()
+
+
 def test_customer_contact_migration_preserves_plaintext_if_round_trip_fails(tmp_path, monkeypatch):
     engine = create_engine(f"sqlite:///{tmp_path / 'failed.db'}")
     with engine.begin() as connection:

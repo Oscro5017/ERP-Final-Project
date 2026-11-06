@@ -16,24 +16,38 @@ from .models import CropCycleStatusLog
 logger = logging.getLogger(__name__)
 
 
-def _backup_sqlite_database(engine: Engine, backup_dir: Path | None = None) -> Path:
+def _configured_backup_dir(backup_dir: Path | str | None) -> Path:
+    if backup_dir is None:
+        from .config import get_settings
+
+        backup_dir = get_settings().backup_dir
+    if not backup_dir:
+        raise RuntimeError("An explicit backup directory is required; set BACKUP_DIR before running this migration.")
+    return Path(backup_dir).expanduser().resolve()
+
+
+def _best_effort_secure_backup_path(path: Path, is_directory: bool = True) -> None:
+    try:
+        _secure_phase1e_backup_path(path, is_directory=is_directory)
+    except (OSError, subprocess.SubprocessError):
+        logger.warning("Could not fully restrict permissions on migration backup path %s.", path)
+
+
+def _backup_sqlite_database(engine: Engine, backup_dir: Path | str | None = None) -> Path:
     if engine.dialect.name != "sqlite":
         raise RuntimeError("Customer contact migration stopped: automatic backup is only configured for SQLite.")
 
+    destination_dir = _configured_backup_dir(backup_dir)
     database = engine.url.database
+    backup_name = f"erp-pre-phase1d-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
     if database and database != ":memory:":
         database_path = Path(database).resolve()
-        destination_dir = backup_dir or database_path.parent.parent / f"{database_path.parent.name}-private-backups"
         backup_name = f"{database_path.stem}-pre-phase1d-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
-        destination = destination_dir / backup_name
-    else:
-        if backup_dir is None:
-            raise RuntimeError("Customer contact migration stopped: an explicit backup directory is required for in-memory SQLite.")
-        destination_dir = backup_dir
-        destination = destination_dir / f"erp-pre-phase1d-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
+    destination = destination_dir / backup_name
 
     try:
         destination_dir.mkdir(parents=True, exist_ok=True)
+        _best_effort_secure_backup_path(destination_dir)
         destination_connection = sqlite3.connect(destination)
         try:
             raw_connection = engine.raw_connection()
@@ -44,15 +58,26 @@ def _backup_sqlite_database(engine: Engine, backup_dir: Path | None = None) -> P
         finally:
             destination_connection.close()
 
-        with sqlite3.connect(destination) as verification_connection:
+        if os.name != "nt":
+            destination.chmod(0o600)
+        else:
+            _best_effort_secure_backup_path(destination, is_directory=False)
+
+        verification_connection = sqlite3.connect(destination)
+        try:
             integrity = verification_connection.execute("PRAGMA integrity_check").fetchone()
+        finally:
+            verification_connection.close()
         if integrity is None or integrity[0] != "ok":
             raise RuntimeError("SQLite backup integrity check failed.")
     except Exception as exc:
         destination.unlink(missing_ok=True)
         raise RuntimeError("Customer contact migration stopped because the database backup failed.") from exc
 
-    logger.info("Created and verified pre-Phase 1d database backup at %s", destination)
+    logger.warning(
+        "Created a restricted pre-Phase 1d backup at %s. It may contain plaintext farm data; keep it private and outside the repository.",
+        destination,
+    )
     return destination
 
 
@@ -289,23 +314,15 @@ def _secure_phase1e_backup_path(path: Path, is_directory: bool = True) -> None:
         path.chmod(0o700)
 
 
-def _backup_phase1e_database(engine: Engine, backup_dir: Path | None = None) -> Path:
+def _backup_phase1e_database(engine: Engine, backup_dir: Path | str | None = None) -> Path:
     if engine.dialect.name != "sqlite":
         raise RuntimeError("Phase 1e migration stopped: automatic backup is only configured for SQLite.")
 
-    database = engine.url.database
-    if database and database != ":memory:":
-        database_path = Path(database).resolve()
-        destination_dir = backup_dir or database_path.parent.parent / f"{database_path.parent.name}-private-backups" / "phase1e"
-        backup_name = f"erp-pre-phase1e-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
-    else:
-        if backup_dir is None:
-            raise RuntimeError("Phase 1e migration stopped: an explicit backup directory is required for in-memory SQLite.")
-        destination_dir = backup_dir
-        backup_name = f"erp-pre-phase1e-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
+    destination_dir = _configured_backup_dir(backup_dir)
+    backup_name = f"erp-pre-phase1e-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.db"
 
     destination_dir.mkdir(parents=True, exist_ok=True)
-    _secure_phase1e_backup_path(destination_dir)
+    _best_effort_secure_backup_path(destination_dir)
     destination = destination_dir / backup_name
     try:
         destination_connection = sqlite3.connect(destination)
@@ -320,9 +337,12 @@ def _backup_phase1e_database(engine: Engine, backup_dir: Path | None = None) -> 
         if os.name != "nt":
             destination.chmod(0o600)
         else:
-            _secure_phase1e_backup_path(destination, is_directory=False)
-        with sqlite3.connect(destination) as verification_connection:
+            _best_effort_secure_backup_path(destination, is_directory=False)
+        verification_connection = sqlite3.connect(destination)
+        try:
             integrity = verification_connection.execute("PRAGMA integrity_check").fetchone()
+        finally:
+            verification_connection.close()
         if integrity is None or integrity[0] != "ok":
             raise RuntimeError("SQLite backup integrity check failed.")
     except Exception as exc:
@@ -336,7 +356,7 @@ def _backup_phase1e_database(engine: Engine, backup_dir: Path | None = None) -> 
     return destination
 
 
-def migrate_phase1e(engine: Engine, backup_dir: Path | None = None) -> dict[str, int]:
+def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dict[str, int]:
     if engine.dialect.name != "sqlite":
         raise RuntimeError("Phase 1e migration currently supports SQLite only.")
 

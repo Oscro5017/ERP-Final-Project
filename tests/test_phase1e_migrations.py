@@ -143,3 +143,84 @@ def test_phase1e_round_trip_failure_keeps_legacy_plaintext_and_schema(tmp_path, 
         assert connection.exec_driver_sql("SELECT item_name FROM input_items WHERE id = 1").scalar_one() == "MIX-SECRET"
         assert connection.exec_driver_sql("PRAGMA integrity_check").scalar_one() == "ok"
     engine.dispose()
+
+
+def test_phase1e_requires_backup_dir_before_migration_changes(tmp_path, monkeypatch):
+    from app import config
+
+    database_path = tmp_path / "requires-backup.db"
+    build_legacy_database(database_path)
+    engine = make_engine(database_path)
+    monkeypatch.setattr(config, "get_settings", lambda: type("Settings", (), {"backup_dir": None})())
+
+    with pytest.raises(RuntimeError, match="BACKUP_DIR"):
+        migrations.migrate_phase1e(engine)
+    with engine.connect() as connection:
+        columns = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(input_items)")}
+        assert {"item_name", "quantity"} <= columns
+    engine.dispose()
+
+
+def _run_app_startup_with_engine(monkeypatch, engine, settings):
+    import asyncio
+    from types import SimpleNamespace
+
+    from sqlalchemy.orm import sessionmaker
+
+    from app import config, main
+
+    class Scheduler:
+        running = False
+
+        def add_job(self, *_args, **_kwargs):
+            pass
+
+        def start(self):
+            self.running = True
+
+        def shutdown(self):
+            self.running = False
+
+    monkeypatch.setattr(main, "engine", engine)
+    monkeypatch.setattr(main, "SessionLocal", sessionmaker(bind=engine))
+    monkeypatch.setattr(main, "scheduler", Scheduler())
+    monkeypatch.setattr(main, "run_weather_catchup_job", lambda: None)
+    monkeypatch.setattr(config, "get_settings", lambda: SimpleNamespace(backup_dir=None))
+    application = main.create_app(settings)
+
+    async def start_application():
+        async with main.lifespan(application):
+            pass
+
+    asyncio.run(start_application())
+
+
+def test_startup_on_new_database_does_not_require_backup_dir(monkeypatch):
+    from cryptography.fernet import Fernet
+    from app.config import Settings
+
+    engine = create_engine("sqlite://")
+    settings = Settings(_env_file=None, encryption_key=Fernet.generate_key().decode())
+
+    _run_app_startup_with_engine(monkeypatch, engine, settings)
+
+    engine.dispose()
+
+
+def test_startup_rejects_required_migration_without_backup_dir(monkeypatch):
+    from cryptography.fernet import Fernet
+    from app.config import Settings
+
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE TABLE customers (id INTEGER PRIMARY KEY, contact TEXT)")
+    settings = Settings(_env_file=None, encryption_key=Fernet.generate_key().decode())
+
+    with pytest.raises(RuntimeError, match="BACKUP_DIR"):
+        _run_app_startup_with_engine(monkeypatch, engine, settings)
+
+    with engine.connect() as connection:
+        columns = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(customers)")}
+        assert "contact" in columns
+        assert "contact_encrypted" not in columns
+    engine.dispose()
