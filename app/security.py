@@ -1,5 +1,7 @@
 import hashlib
 import hmac
+import base64
+import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
@@ -14,16 +16,37 @@ from .models import Role, User
 bearer = HTTPBearer(auto_error=False)
 
 
+PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
+PASSWORD_HASH_ITERATIONS = 120_000
+
+
 def hash_password(password: str) -> str:
-    salt = hashlib.sha256(password.encode()).hexdigest()[:32]
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
-    return f"{salt}${digest}"
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, PASSWORD_HASH_ITERATIONS)
+    encoded_salt = base64.urlsafe_b64encode(salt).decode("ascii").rstrip("=")
+    return f"{PASSWORD_HASH_SCHEME}${PASSWORD_HASH_ITERATIONS}${encoded_salt}${digest.hex()}"
 
 
 def verify_password(password: str, stored: str) -> bool:
-    salt, expected = stored.split("$", 1)
-    actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+    if stored.startswith(f"{PASSWORD_HASH_SCHEME}$"):
+        try:
+            scheme, iterations, encoded_salt, expected = stored.split("$", 3)
+            salt = base64.urlsafe_b64decode(encoded_salt + "=" * (-len(encoded_salt) % 4))
+            actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, int(iterations)).hex()
+        except (ValueError, TypeError):
+            return False
+        return scheme == PASSWORD_HASH_SCHEME and hmac.compare_digest(actual, expected)
+
+    try:
+        salt, expected = stored.split("$", 1)
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+    except (ValueError, TypeError):
+        return False
     return hmac.compare_digest(actual, expected)
+
+
+def password_hash_needs_upgrade(stored: str) -> bool:
+    return not stored.startswith(f"{PASSWORD_HASH_SCHEME}$")
 
 
 def create_access_token(user: User) -> str:

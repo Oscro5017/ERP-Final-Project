@@ -1,19 +1,56 @@
+import logging
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
+from .config import Settings, get_settings
 from .models import Batch, CropCycle, CropCycleStatusLog, CropType, CycleStatus, Role, Table, User
-from .security import hash_password
+from .security import hash_password, verify_password
 
 
-def seed_database(db: Session) -> None:
+logger = logging.getLogger(__name__)
+
+
+def validate_production_default_passwords(db: Session, settings: Settings) -> None:
+    if settings.app_env.strip().lower() != "production":
+        return
+
+    bind = db.get_bind()
+    if not inspect(bind).has_table(User.__tablename__):
+        return
+
+    development_defaults = ("owner123", "developer123")
+    users = db.scalars(select(User)).all()
+    for user in users:
+        if any(verify_password(password, user.password_hash) for password in development_defaults):
+            raise RuntimeError(
+                f"Production startup blocked: account '{user.username}' still uses a development default password. Change it before startup."
+            )
+
+
+def seed_database(db: Session, settings: Settings | None = None) -> None:
+    settings = settings or get_settings()
     if db.scalar(select(User).where(User.username == "owner")):
         return
-    db.add_all([
-        User(username="owner", password_hash=hash_password("owner123"), role=Role.owner),
-        User(username="developer", password_hash=hash_password("developer123"), role=Role.developer),
-    ])
+    production = settings.app_env.strip().lower() == "production"
+    initial_passwords = {
+        "owner": settings.initial_owner_password or (None if production else "owner123"),
+        "developer": settings.initial_developer_password or (None if production else "developer123"),
+    }
+    for username, role in (("owner", Role.owner), ("developer", Role.developer)):
+        if db.scalar(select(User).where(User.username == username)):
+            continue
+        password = initial_passwords[username]
+        if not password:
+            logger.error("Initial %s account was not created: its initial password is not configured.", username)
+            continue
+        db.add(User(username=username, password_hash=hash_password(password), role=role))
+
+    if db.scalar(select(Table.id).limit(1)):
+        db.commit()
+        return
+
     db.add_all([Table(table_number=number) for number in range(1, 50)])
     today = date.today()
     db.add_all([Batch(batch_number=number, start_date=today + timedelta(days=(number - 1) * 7), week_offset=number - 1) for number in range(1, 9)])
