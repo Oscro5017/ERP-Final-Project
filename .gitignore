@@ -10,6 +10,7 @@ erp.db
 __pycache__/
 .pytest_cache/
 .venv/
+logs/
 
 # Local/runtime and generated files
 node_modules/

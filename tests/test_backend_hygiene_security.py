@@ -44,6 +44,22 @@ def test_production_rejects_weak_secrets_and_wildcard_cors(overrides):
         Settings(**values)
 
 
+def test_password_hash_iteration_setting_rejects_values_below_minimum():
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, encryption_key=TEST_FERNET_KEY, password_hash_iterations=99_999)
+
+
+def test_new_password_hash_uses_configured_iterations(monkeypatch):
+    from app import security
+
+    monkeypatch.setattr(
+        security,
+        "get_settings",
+        lambda: type("Settings", (), {"password_hash_iterations": 123_456})(),
+    )
+    assert security.hash_password("synthetic-password").startswith("pbkdf2_sha256$123456$")
+
+
 def test_production_accepts_strong_secrets_and_disables_docs_by_default():
     settings = Settings(
         _env_file=None, encryption_key=TEST_FERNET_KEY, app_env="production",
@@ -143,6 +159,44 @@ def test_successful_legacy_login_upgrades_hash(monkeypatch):
         )
         assert response.access_token
         assert user.password_hash.startswith("pbkdf2_sha256$")
+    engine.dispose()
+
+
+def test_successful_login_upgrades_hash_below_configured_iterations(monkeypatch):
+    from starlette.requests import Request
+
+    from app import security
+    from app.routers import auth
+
+    password = "versioned-lower-rounds-password"
+    iterations = 100_000
+    salt = b"synthetic-salt-123"
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations).hex()
+    encoded_salt = __import__("base64").urlsafe_b64encode(salt).decode("ascii").rstrip("=")
+    old_hash = f"pbkdf2_sha256${iterations}${encoded_salt}${digest}"
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        user = User(username="lower-rounds-owner", password_hash=old_hash, role=Role.owner)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        request = Request({"type": "http", "client": ("192.0.2.51", 1234), "headers": []})
+        monkeypatch.setattr(
+            security,
+            "get_settings",
+            lambda: type("Settings", (), {
+                "jwt_secret": "j" * 48,
+                "jwt_expire_minutes": 30,
+                "password_hash_iterations": 125_000,
+            })(),
+        )
+        auth.reset_login_attempts()
+        response = auth.login(
+            type("Payload", (), {"username": user.username, "password": password})(), request, db
+        )
+        assert response.access_token
+        assert user.password_hash.startswith("pbkdf2_sha256$125000$")
     engine.dispose()
 
 

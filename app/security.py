@@ -20,11 +20,16 @@ PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
 PASSWORD_HASH_ITERATIONS = 120_000
 
 
+def _configured_password_hash_iterations() -> int:
+    return getattr(get_settings(), "password_hash_iterations", PASSWORD_HASH_ITERATIONS)
+
+
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, PASSWORD_HASH_ITERATIONS)
+    iterations = _configured_password_hash_iterations()
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations)
     encoded_salt = base64.urlsafe_b64encode(salt).decode("ascii").rstrip("=")
-    return f"{PASSWORD_HASH_SCHEME}${PASSWORD_HASH_ITERATIONS}${encoded_salt}${digest.hex()}"
+    return f"{PASSWORD_HASH_SCHEME}${iterations}${encoded_salt}${digest.hex()}"
 
 
 def verify_password(password: str, stored: str) -> bool:
@@ -46,7 +51,13 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def password_hash_needs_upgrade(stored: str) -> bool:
-    return not stored.startswith(f"{PASSWORD_HASH_SCHEME}$")
+    if not stored.startswith(f"{PASSWORD_HASH_SCHEME}$"):
+        return True
+    try:
+        scheme, iterations, _salt, _digest = stored.split("$", 3)
+        return scheme != PASSWORD_HASH_SCHEME or int(iterations) < _configured_password_hash_iterations()
+    except (ValueError, TypeError):
+        return True
 
 
 def create_access_token(user: User) -> str:

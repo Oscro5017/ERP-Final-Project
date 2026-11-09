@@ -85,6 +85,7 @@ class CustomerResponse(BaseModel):
     name: str
     contact: str
     is_masked: bool
+    decrypt_failed: bool = False
 
 
 class InputItemCreate(BaseModel):
@@ -116,9 +117,10 @@ class InputApplicationUpdate(BaseModel):
 class InputItemResponse(BaseModel):
     id: int
     item_name: str
-    quantity: float | str
+    quantity: float | str | None
     unit: str
     is_masked: bool
+    decrypt_failed: bool = False
 
 
 class InputApplicationResponse(BaseModel):
@@ -129,6 +131,7 @@ class InputApplicationResponse(BaseModel):
     note: str | None = None
     items: list[InputItemResponse]
     is_masked: bool
+    decrypt_failed: bool = False
 
 
 class InputCatalogSuggestionResponse(BaseModel):
@@ -138,6 +141,7 @@ class InputCatalogSuggestionResponse(BaseModel):
     last_category: str | None = None
     last_used_at: datetime | None = None
     use_count: int
+    decrypt_failed: bool = False
 
 
 class InputCatalogSuggestionsResponse(BaseModel):
@@ -179,6 +183,7 @@ class TaskResponse(BaseModel):
     created_at: datetime
     cycle_info: TaskCycleInfo | None = None
     is_masked: bool
+    decrypt_failed: bool = False
 
 
 class WeatherForecastDay(BaseModel):

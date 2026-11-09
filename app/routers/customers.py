@@ -7,12 +7,12 @@ from ..models import Customer, Role, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import CustomerCreate, CustomerResponse
 from ..security import get_current_role
-from ..services.secure_fields import encrypt_text, present_text
+from ..services.secure_fields import encrypt_text, present_text_safe
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
 
-@router.get("", response_model=list[CustomerResponse])
+@router.get("", response_model=list[CustomerResponse], response_model_exclude_defaults=True)
 def list_customers(
     q: str | None = Query(default=None, max_length=160),
     db: Session = Depends(get_db),
@@ -21,22 +21,28 @@ def list_customers(
     if q and role != Role.owner:
         raise HTTPException(status_code=403, detail="Customer name search is only available to the owner.")
     customers = db.scalars(active_rows(select(Customer).order_by(Customer.id), Customer)).all()
-    responses = [
-        CustomerResponse(
-            id=item.id,
-            name=present_text(item.name_encrypted, role),
-            contact=present_text(item.contact_encrypted, role),
-            is_masked=role == Role.developer,
+    responses = []
+    normalized_query = q.casefold() if q else None
+    for customer in customers:
+        name_result = present_text_safe(
+            customer.name_encrypted, role, table="customers", row_id=customer.id, field="name"
         )
-        for item in customers
-    ]
-    if q:
-        normalized_query = q.casefold()
-        responses = [item for item in responses if normalized_query in item.name.casefold()]
+        contact_result = present_text_safe(
+            customer.contact_encrypted, role, table="customers", row_id=customer.id, field="contact"
+        )
+        if normalized_query and (name_result.decrypt_failed or normalized_query not in name_result.value.casefold()):
+            continue
+        responses.append(CustomerResponse(
+            id=customer.id,
+            name=name_result.value,
+            contact=contact_result.value,
+            is_masked=role == Role.developer,
+            decrypt_failed=name_result.decrypt_failed or contact_result.decrypt_failed,
+        ))
     return responses
 
 
-@router.post("", response_model=CustomerResponse, status_code=201)
+@router.post("", response_model=CustomerResponse, response_model_exclude_defaults=True, status_code=201)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), role: Role = Depends(get_current_role)):
     customer = Customer(
         name_encrypted=encrypt_text(payload.name).encode("ascii"),
@@ -45,11 +51,18 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), role
     db.add(customer)
     db.commit()
     db.refresh(customer)
+    name_result = present_text_safe(
+        customer.name_encrypted, role, table="customers", row_id=customer.id, field="name"
+    )
+    contact_result = present_text_safe(
+        customer.contact_encrypted, role, table="customers", row_id=customer.id, field="contact"
+    )
     return CustomerResponse(
         id=customer.id,
-        name=present_text(customer.name_encrypted, role),
-        contact=present_text(customer.contact_encrypted, role),
+        name=name_result.value,
+        contact=contact_result.value,
         is_masked=role == Role.developer,
+        decrypt_failed=name_result.decrypt_failed or contact_result.decrypt_failed,
     )
 
 

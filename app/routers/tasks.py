@@ -8,7 +8,7 @@ from ..models import CropCycle, Role, Task, User, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import TaskCreate, TaskCycleInfo, TaskResponse, TaskUpdate
 from ..security import get_current_user
-from ..services.secure_fields import decrypt_text, encrypt_text, present_text
+from ..services.secure_fields import encrypt_text, present_text_safe, safe_decrypt_text
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -25,16 +25,26 @@ def build_task_response(task: Task, role: Role) -> TaskResponse:
             crop_name=crop_name,
         )
 
+    title_result = present_text_safe(
+        task.title if task.is_encrypted else None,
+        role,
+        table="tasks",
+        row_id=task.id,
+        field="title",
+    )
+    title = title_result.value if task.is_encrypted else task.title
+
     return TaskResponse(
         id=task.id,
         cycle_id=task.cycle_id,
-        title=present_text(task.title, role) if task.is_encrypted else task.title,
+        title=title,
         due_date=task.due_date,
         status=task.status,
         source=task.source,
         created_at=task.created_at,
         cycle_info=cycle_info,
         is_masked=task.is_encrypted and role != Role.owner,
+        decrypt_failed=title_result.decrypt_failed,
     )
 
 
@@ -151,7 +161,15 @@ def update_task(
             task.title = encrypt_text(task.title)
             task.is_encrypted = True
         elif next_source == "auto" and task.is_encrypted:
-            task.title = decrypt_text(task.title)
+            title_result = safe_decrypt_text(
+                task.title,
+                table="tasks",
+                row_id=task.id,
+                field="title",
+            )
+            if title_result.decrypt_failed:
+                raise HTTPException(status_code=409, detail="ไม่สามารถเปลี่ยนประเภทงานได้เนื่องจากข้อมูลเข้ารหัสอ่านไม่ได้")
+            task.title = title_result.value
             task.is_encrypted = False
 
     for field, value in update_data.items():

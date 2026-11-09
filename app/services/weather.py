@@ -346,6 +346,7 @@ def catch_up_weather_history(db: Session, today: date | None = None) -> int:
         )
     ).all())
     synced = 0
+    failed = 0
 
     for days_ago in range(14, 0, -1):
         target_date = today - timedelta(days=days_ago)
@@ -360,5 +361,7 @@ def catch_up_weather_history(db: Session, today: date | None = None) -> int:
         except Exception as exc:
             db.rollback()
             logger.warning("Weather catch-up skipped %s after fetch failure: %s", target_date, exc)
+            failed += 1
 
+    logger.info("Weather catch-up finished; filled %s days and failed %s days.", synced, failed)
     return synced

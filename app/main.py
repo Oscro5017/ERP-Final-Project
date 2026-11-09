@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .database import Base, SessionLocal, engine
+from .logging_config import configure_logging
 from .migrations import migrate_crop_cycles, migrate_customer_contact_encryption, migrate_phase1c, migrate_phase1e
 from .routers import auth, crop_cycles, customers, input_applications, reference, sensors, tasks, weather
 from .seed import seed_database, validate_production_default_passwords
@@ -73,6 +74,8 @@ def run_weather_catchup_job():
         result = _run_scheduled_job("startup forecast snapshot", ensure_today_forecast_snapshot)
         if result == []:
             logger.info("Startup forecast snapshot already exists for today.")
+        elif result is not None:
+            logger.info("Startup forecast snapshot captured %s rows.", len(result))
     except Exception:
         logger.exception("Startup forecast snapshot failed; startup will continue.")
 
@@ -104,6 +107,11 @@ def register_weather_jobs(target_scheduler, settings) -> None:
     )
 
 
+def log_registered_weather_jobs(target_scheduler) -> None:
+    for job in target_scheduler.get_jobs():
+        logger.info("Registered scheduled job %s; next run at %s.", job.id, job.next_run_time)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     settings = _app.state.settings
@@ -125,6 +133,7 @@ async def lifespan(_app: FastAPI):
     try:
         register_weather_jobs(scheduler, settings)
         scheduler.start()
+        log_registered_weather_jobs(scheduler)
     except Exception as exc:
         logger.error("Failed to start scheduler: %s", exc)
 
@@ -138,6 +147,7 @@ async def lifespan(_app: FastAPI):
 
 def create_app(settings=None) -> FastAPI:
     app_settings = settings or get_settings()
+    configure_logging(app_settings)
     docs_url = "/docs" if app_settings.docs_enabled else None
     redoc_url = "/redoc" if app_settings.docs_enabled else None
     openapi_url = "/openapi.json" if app_settings.docs_enabled else None

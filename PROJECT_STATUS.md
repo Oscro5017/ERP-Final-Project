@@ -6,15 +6,16 @@
 
 ระบบหลักทำงานด้วย FastAPI + SQLAlchemy backend และ React/Vite frontend โดย `ERPOganicFarm` เป็นโปรเจกต์หลัก ส่วน `code_prototype` ใช้เก็บต้นแบบ UI สำหรับเปรียบเทียบ
 
-ปัจจุบัน Phase 1b–1e มี implementation ตามขอบเขตแล้ว: Task/Weather, Chart.js/data hooks, encrypted customer/input/task data, forecast snapshots และ sensor endpoints. Backend hygiene H1–H6 มีการตรวจโค้ดและทดสอบใน workspace แล้ว; full backend suite ล่าสุดวันที่ 2026-11-06 ผ่าน 66 tests และมี 73 warnings. Follow-up แยก weather timeout/cache, Cloudflare proxy IP/backoff, production legacy-password guard, startup behavior เมื่อไม่มี BACKUP_DIR, SPA refresh ที่ `/weather` และค่าเริ่มต้นประวัติอากาศเป็นทั้งหมดแล้ว. ยังไม่ได้เปิดหรือแก้ `erp.db` จริง, ยังไม่ได้รัน foreign-key audit กับสำเนาฐานข้อมูลจริงหรือสั่ง historical re-sync; ให้ทำ audit ก่อน deploy การบังคับ foreign keys. Phase 2 ยังไม่เริ่ม
+ปัจจุบัน Phase 1b–1e มี implementation ตามขอบเขตแล้ว: Task/Weather, Chart.js/data hooks, encrypted customer/input/task data, forecast snapshots และ sensor endpoints. Backend hygiene H1–H6 ได้ตรวจและปรับปรุงต่อเนื่องใน branch `backend/safe-decrypt-logging` พร้อมงาน follow-up S1–S4: safe per-row decryption, redacted logging, rotating app logs, read-only decrypt checker, และ config password iteration ที่สามารถยกระดับ hash ได้ตามค่าใหม่. Full backend suite ล่าสุดวันที่ 2026-11-06 ผ่าน 77 tests และมี 73 warnings; ยังไม่ได้เปิดหรือแก้ `erp.db` จริง, ยังไม่ได้รัน foreign-key audit กับสำเนาฐานข้อมูลจริงหรือสั่ง historical re-sync; ให้ทำ audit ก่อน deploy การบังคับ foreign keys. Phase 2 ยังไม่เริ่ม
 
 > **วันที่ปรับปรุงล่าสุด**: 2026-11-06
-> **รายละเอียด**: แก้ SPA fallback ให้เปิด/refresh `/weather` ได้โดยไม่กลืน API 404; หน้า weather history เริ่มต้นแบบไม่กรองและปุ่มล้างตัวกรองล้าง/โหลดประวัติทั้งหมด. Full backend suite รันจริงวันที่ 2026-11-06: 66 passed, 73 warnings; frontend build ผ่าน. ไม่ได้เปิดหรือแก้ `erp.db` จริง. งาน backend hygiene H1–H6 ยังคงมีผลตามบันทึกรอบก่อน.
+> **รายละเอียด**: เพิ่ม safe decrypt/secure logging, จัดการ rotating log `logs/app.log`, read-only decrypt audit script, config `PASSWORD_HASH_ITERATIONS`, และรวม patch validation อย่างต่อเนื่อง. Full backend suite รันจริงวันที่ 2026-11-06: 77 passed, 73 warnings; frontend build ผ่าน. ไม่ได้เปิดหรือแก้ `erp.db` จริง. งาน backend hygiene H1–H6 และ follow-up S1–S4 ยังคงมีผลตามบันทึกรอบก่อน.
 
 ## ประวัติการปรับปรุงระบบ (Revision History)
 
 | วันที่ (Date) | รายละเอียดการปรับปรุง (Changes) | AI Model | โปรแกรม / เครื่องมือ (Platform) |
 |---|---|---|---|
+| 2026-11-06 | เพิ่ม safe decrypt/logging สคริปต์, rotating log, read-only decrypt checker, `PASSWORD_HASH_ITERATIONS` และตรวจสอบ callback/response ที่รั่ว token; full backend suite 77 passed, 73 warnings; frontend build ผ่าน | GitHub Copilot | VS Code |
 | 2026-11-06 | แก้ `/weather` SPA refresh fallback และเปลี่ยน weather history ให้แสดงทุกบันทึกเป็นค่าเริ่มต้น; backend tests 66 passed, 73 warnings; frontend build ผ่าน | GitHub Copilot | VS Code |
 | 2026-11-05 | ตรวจ/ปิดงาน backend hygiene H1–H6 และ follow-up; full backend suite รันจริง 65 passed, 73 warnings; ไม่ได้เปิด/แก้ `erp.db` จริง, ไม่ได้รัน foreign-key audit กับสำเนาฐานข้อมูลจริงหรือ historical re-sync | GitHub Copilot | VS Code |
 | 2026-11-03 | ตรวจพบ scheduled weather sync บน Pi ได้ HTTP 503 จาก Open-Meteo; sync วันที่ 2026-11-02 สำเร็จภายหลังและมีประวัติ 17 วัน; เพิ่ม retry สูงสุด 3 attempts และ daily 14-day catch-up เวลา 08:30 ใน workspace; tests weather/scheduler/catch-up 23 passed; รอ deploy ไป Pi | Copilot | VS Code |

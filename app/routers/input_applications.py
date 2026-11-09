@@ -16,30 +16,48 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.input_catalog import suggest_input_catalog, upsert_input_catalog
-from ..services.secure_fields import encrypt_number, encrypt_text, present_number, present_text
+from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe
 
 router = APIRouter(tags=["input applications"])
 
 
 def present_input_application(application: InputApplication, role: Role) -> InputApplicationResponse:
     is_masked = role != Role.owner
+    note_result = present_text_safe(
+        application.note_encrypted,
+        role,
+        table="input_applications",
+        row_id=application.id,
+        field="note",
+    )
+    presented_items = []
+    decrypt_failed = note_result.decrypt_failed
+    for item in application.items:
+        name_result = present_text_safe(
+            item.item_name_encrypted, role, table="input_items", row_id=item.id, field="item_name"
+        )
+        quantity_result = present_number_safe(
+            item.quantity_encrypted, role, table="input_items", row_id=item.id, field="quantity"
+        )
+        decrypt_failed = decrypt_failed or name_result.decrypt_failed or quantity_result.decrypt_failed
+        presented_items.append({
+            "id": item.id,
+            "item_name": name_result.value,
+            "quantity": quantity_result.value,
+            "unit": item.unit,
+            "is_masked": is_masked,
+            "decrypt_failed": name_result.decrypt_failed or quantity_result.decrypt_failed,
+        })
+
     return InputApplicationResponse(
         id=application.id,
         cycle_id=application.cycle_id,
         applied_date=application.applied_date,
         category=application.category,
-        note=present_text(application.note_encrypted, role) if application.note_encrypted else None,
+        note=note_result.value if application.note_encrypted else None,
         is_masked=is_masked,
-        items=[
-            {
-                "id": item.id,
-                "item_name": present_text(item.item_name_encrypted, role),
-                "quantity": present_number(item.quantity_encrypted, role),
-                "unit": item.unit,
-                "is_masked": is_masked,
-            }
-            for item in application.items
-        ],
+        items=presented_items,
+        decrypt_failed=decrypt_failed,
     )
 
 
@@ -153,11 +171,12 @@ def get_input_catalog_suggestions(q: str = Query(default=""), limit: int = Query
         items=[
             InputCatalogSuggestionResponse(
                 id=item.id,
-                item_name=present_text(item.name_encrypted, user.role),
+                item_name=item.name,
                 last_unit=item.last_unit,
                 last_category=item.last_category,
                 last_used_at=item.last_used_at,
                 use_count=item.use_count,
+                decrypt_failed=False,
             )
             for item in items
         ],

@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from cryptography.fernet import Fernet
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./erp.db"
     jwt_secret: str = "change-this-in-production"
     jwt_expire_minutes: int = 480
+    password_hash_iterations: int = Field(default=120_000, ge=100_000)
     encryption_key: str = ""
     device_token: str | None = None
     initial_owner_password: str | None = None
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     backup_dir: str | None = None
     cors_origins: str = "http://localhost:8000"
     trusted_proxy_ips: str = ""
+    log_level: str = "INFO"
+    log_dir: str = "logs"
     farm_latitude: float = 18.8072866
     farm_longitude: float = 99.0930437
     farm_timezone: str = "Asia/Bangkok"

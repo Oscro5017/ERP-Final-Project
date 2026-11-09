@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import InputCatalog
-from .secure_fields import decrypt_text, encrypt_text, hash_catalog_name, normalize_catalog_name
+from .secure_fields import encrypt_text, hash_catalog_name, normalize_catalog_name, safe_decrypt_text
 
 
 def normalize_item_name(value: str) -> str:
@@ -44,11 +44,14 @@ def suggest_input_catalog(db: Session, query: str, limit: int = 10) -> list[Inpu
     q = normalize_catalog_name(query)
     if not q:
         return []
-    matches = [
-        item
-        for item in db.scalars(select(InputCatalog)).all()
-        if q in normalize_catalog_name(decrypt_text(item.name_encrypted))
-    ]
+    matches = []
+    for item in db.scalars(select(InputCatalog)).all():
+        result = safe_decrypt_text(
+            item.name_encrypted, table="input_catalog", row_id=item.id, field="name"
+        )
+        if not result.decrypt_failed and q in normalize_catalog_name(result.value):
+            item.name = result.value
+            matches.append(item)
     matches.sort(
         key=lambda item: (
             item.use_count,

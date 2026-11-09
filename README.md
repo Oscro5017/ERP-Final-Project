@@ -37,8 +37,10 @@ python3 -m venv .venv
 cp .env.example .env
 # Edit .env: set APP_ENV=production, strong JWT_SECRET, ENCRYPTION_KEY,
 # BACKUP_DIR outside the repository, CORS_ORIGINS, and initial account passwords.
+# PASSWORD_HASH_ITERATIONS defaults to 120000; raise it only after measuring login time on the Pi.
 # For Cloudflare Tunnel, set TRUSTED_PROXY_IPS to the direct tunnel peer only
 # (for example 127.0.0.1/32 only when cloudflared connects over loopback).
+# LOG_LEVEL defaults to INFO; LOG_DIR defaults to logs/ for rotating app logs.
 .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
@@ -63,6 +65,14 @@ reports only table names and violation counts, and never repairs rows:
 
 If it reports violations, stop and review those relationships before restarting
 the service with the new backend.
+
+To audit encrypted fields with the key configured in `.env`, run the checker
+from the application directory. It opens the database read-only and prints only
+counts, row IDs, error types, and token-format labels:
+
+```bash
+.venv/bin/python -m scripts.check_decrypt /home/pi/erp-app/erp.db
+```
 
 To refresh historical weather-model rows that may contain old fallback values,
 choose an explicit date range and run this script manually. It overwrites only
