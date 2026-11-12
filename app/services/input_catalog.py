@@ -41,15 +41,28 @@ def upsert_input_catalog(db: Session, item_name: str, unit: str | None = None, c
 
 
 def suggest_input_catalog(db: Session, query: str, limit: int = 10) -> list[InputCatalog]:
+    matches, _decrypt_failed = suggest_input_catalog_with_status(db, query, limit=limit)
+    return matches
+
+
+def suggest_input_catalog_with_status(
+    db: Session,
+    query: str,
+    limit: int = 10,
+) -> tuple[list[InputCatalog], bool]:
     q = normalize_catalog_name(query)
     if not q:
-        return []
+        return [], False
     matches = []
+    decrypt_failed = False
     for item in db.scalars(select(InputCatalog)).all():
         result = safe_decrypt_text(
             item.name_encrypted, table="input_catalog", row_id=item.id, field="name"
         )
-        if not result.decrypt_failed and q in normalize_catalog_name(result.value):
+        if result.decrypt_failed:
+            decrypt_failed = True
+            continue
+        if q in normalize_catalog_name(result.value):
             item.name = result.value
             matches.append(item)
     matches.sort(
@@ -59,4 +72,4 @@ def suggest_input_catalog(db: Session, query: str, limit: int = 10) -> list[Inpu
         ),
         reverse=True,
     )
-    return matches[:limit]
+    return matches[:limit], decrypt_failed

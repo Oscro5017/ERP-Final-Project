@@ -15,9 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
-from .migrations import migrate_crop_cycles, migrate_customer_contact_encryption, migrate_phase1c, migrate_phase1e
+from .migrations import migrate_crop_cycles, migrate_customer_contact_encryption, migrate_phase1c, migrate_phase1e, migrate_system_meta
 from .routers import auth, crop_cycles, customers, input_applications, reference, sensors, tasks, weather
 from .seed import seed_database, validate_production_default_passwords
+from .services.encryption_canary import ensure_encryption_canary
 from .services.weather import (
     capture_forecast_snapshots,
     catch_up_weather_history,
@@ -118,11 +119,15 @@ async def lifespan(_app: FastAPI):
     with SessionLocal() as db:
         validate_production_default_passwords(db, settings)
 
+    migrate_system_meta(engine)
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        ensure_encryption_canary(db, engine, settings)
+
     migrate_crop_cycles(engine)
     migrate_phase1c(engine)
     migrate_customer_contact_encryption(engine, backup_dir=settings.backup_dir)
     migrate_phase1e(engine, backup_dir=settings.backup_dir)
-    Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         seed_database(db, settings=settings)
 

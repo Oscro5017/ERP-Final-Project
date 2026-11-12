@@ -41,6 +41,13 @@ class User(Base):
     role: Mapped[Role] = mapped_column(SqlEnum(Role), default=Role.developer)
 
 
+class SystemMeta(TimestampMixin, Base):
+    __tablename__ = "system_meta"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class Table(Base):
     __tablename__ = "tables"
     id: Mapped[int] = mapped_column(primary_key=True)

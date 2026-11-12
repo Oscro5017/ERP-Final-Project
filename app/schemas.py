@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 from .models import CycleStatus, Role
 
@@ -80,12 +80,22 @@ class CustomerCreate(BaseModel):
     contact: str = Field(default="", max_length=160)
 
 
-class CustomerResponse(BaseModel):
+class DecryptionStatusResponse(BaseModel):
+    decrypt_failed: bool = False
+
+    @model_serializer(mode="wrap")
+    def serialize_decryption_status(self, handler):
+        data = handler(self)
+        if not self.decrypt_failed:
+            data.pop("decrypt_failed", None)
+        return data
+
+
+class CustomerResponse(DecryptionStatusResponse):
     id: int
     name: str
     contact: str
     is_masked: bool
-    decrypt_failed: bool = False
 
 
 class InputItemCreate(BaseModel):
@@ -114,16 +124,15 @@ class InputApplicationUpdate(BaseModel):
     items: list[InputItemCreate] | None = None
 
 
-class InputItemResponse(BaseModel):
+class InputItemResponse(DecryptionStatusResponse):
     id: int
     item_name: str
     quantity: float | str | None
     unit: str
     is_masked: bool
-    decrypt_failed: bool = False
 
 
-class InputApplicationResponse(BaseModel):
+class InputApplicationResponse(DecryptionStatusResponse):
     id: int
     cycle_id: int
     applied_date: date
@@ -131,20 +140,18 @@ class InputApplicationResponse(BaseModel):
     note: str | None = None
     items: list[InputItemResponse]
     is_masked: bool
-    decrypt_failed: bool = False
 
 
-class InputCatalogSuggestionResponse(BaseModel):
+class InputCatalogSuggestionResponse(DecryptionStatusResponse):
     id: int
     item_name: str
     last_unit: str | None = None
     last_category: str | None = None
     last_used_at: datetime | None = None
     use_count: int
-    decrypt_failed: bool = False
 
 
-class InputCatalogSuggestionsResponse(BaseModel):
+class InputCatalogSuggestionsResponse(DecryptionStatusResponse):
     items: list[InputCatalogSuggestionResponse]
     is_masked: bool
 
@@ -173,7 +180,7 @@ class TaskCycleInfo(BaseModel):
     crop_name: str | None = None
 
 
-class TaskResponse(BaseModel):
+class TaskResponse(DecryptionStatusResponse):
     id: int
     cycle_id: int | None = None
     title: str
@@ -183,7 +190,6 @@ class TaskResponse(BaseModel):
     created_at: datetime
     cycle_info: TaskCycleInfo | None = None
     is_masked: bool
-    decrypt_failed: bool = False
 
 
 class WeatherForecastDay(BaseModel):

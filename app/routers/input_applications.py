@@ -1,6 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -15,7 +16,7 @@ from ..schemas import (
     InputCatalogSuggestionResponse,
 )
 from ..security import get_current_user
-from ..services.input_catalog import suggest_input_catalog, upsert_input_catalog
+from ..services.input_catalog import suggest_input_catalog_with_status, upsert_input_catalog
 from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe
 
 router = APIRouter(tags=["input applications"])
@@ -161,13 +162,16 @@ def delete_input_application(application_id: int, db: Session = Depends(get_db),
     db.commit()
 
 
-@router.get("/input-catalog/suggestions", response_model=InputCatalogSuggestionsResponse)
+@router.get(
+    "/input-catalog/suggestions",
+    response_model=InputCatalogSuggestionsResponse,
+)
 def get_input_catalog_suggestions(q: str = Query(default=""), limit: int = Query(default=10, ge=1, le=20), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role != Role.owner:
-        return InputCatalogSuggestionsResponse(items=[], is_masked=True)
+        return JSONResponse(content={"items": [], "is_masked": True})
 
-    items = suggest_input_catalog(db, q, limit=limit)
-    return InputCatalogSuggestionsResponse(
+    items, decrypt_failed = suggest_input_catalog_with_status(db, q, limit=limit)
+    response = InputCatalogSuggestionsResponse(
         items=[
             InputCatalogSuggestionResponse(
                 id=item.id,
@@ -181,4 +185,9 @@ def get_input_catalog_suggestions(q: str = Query(default=""), limit: int = Query
             for item in items
         ],
         is_masked=False,
+        decrypt_failed=decrypt_failed,
     )
+    payload = response.model_dump(mode="json")
+    if not decrypt_failed:
+        payload.pop("decrypt_failed", None)
+    return JSONResponse(content=payload)

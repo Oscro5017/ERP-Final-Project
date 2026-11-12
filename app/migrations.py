@@ -11,9 +11,14 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from .services.secure_fields import decrypt_number, decrypt_text, encrypt_number, encrypt_text, hash_catalog_name
-from .models import CropCycleStatusLog
+from .models import CropCycleStatusLog, SystemMeta
 
 logger = logging.getLogger(__name__)
+
+
+def migrate_system_meta(engine: Engine) -> None:
+    """Create the additive canary metadata table without backing up existing data."""
+    SystemMeta.__table__.create(bind=engine, checkfirst=True)
 
 
 def _configured_backup_dir(backup_dir: Path | str | None) -> Path:

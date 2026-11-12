@@ -12,7 +12,7 @@ from ..services.secure_fields import encrypt_text, present_text_safe
 router = APIRouter(prefix="/customers", tags=["customers"])
 
 
-@router.get("", response_model=list[CustomerResponse], response_model_exclude_defaults=True)
+@router.get("", response_model=list[CustomerResponse])
 def list_customers(
     q: str | None = Query(default=None, max_length=160),
     db: Session = Depends(get_db),
@@ -42,7 +42,7 @@ def list_customers(
     return responses
 
 
-@router.post("", response_model=CustomerResponse, response_model_exclude_defaults=True, status_code=201)
+@router.post("", response_model=CustomerResponse, status_code=201)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), role: Role = Depends(get_current_role)):
     customer = Customer(
         name_encrypted=encrypt_text(payload.name).encode("ascii"),

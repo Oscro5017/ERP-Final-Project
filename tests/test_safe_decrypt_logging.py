@@ -261,6 +261,12 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
 
         assert catalog_response.status_code == 200
         assert [item["item_name"] for item in catalog_response.json()["items"]] == ["SAFE-CATALOG"]
+        assert catalog_response.json()["decrypt_failed"] is True
+        catalog_suggestion = catalog_response.json()["items"][0]
+        assert {"id", "item_name", "last_unit", "last_category", "last_used_at", "use_count"} <= set(catalog_suggestion)
+        assert catalog_suggestion["last_unit"] is None
+        assert catalog_suggestion["last_category"] is None
+        assert catalog_suggestion["last_used_at"] is None
 
         with sessions() as db:
             db_task = db.get(Task, bad_task_id)
