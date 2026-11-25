@@ -1,5 +1,9 @@
 # ERP Project Status
 
+## Phase 2 backend
+
+Slices 2.1–2.5 plus stock reads and dashboard are implemented on `backend/products-stock`. Regression after 2.5: 221 passed, 73 warnings. The Phase 2 end-to-end workflow test passes. API handoff: `docs/API_PHASE2.md`; generated schema: `docs/openapi.phase2.json`; progress: `docs/phases/phase2/PROGRESS.md`. No commit or push has been made.
+
 วันที่ตรวจสอบ: 2026-11-06
 
 ## ภาพรวม

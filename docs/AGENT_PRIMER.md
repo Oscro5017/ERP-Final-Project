@@ -21,6 +21,13 @@ ERP ฟาร์มไฮโดรโปนิกส์ของลูกค้�
 
 ## คำสั่ง
 
+### Phase 2 contracts
+- Stock movements use centralized source types: `stock_document`, `crop_cycle_harvest`, `input_application`, `task`, `finance_manual`.
+- Harvest, input, trade-document, and task-finance hooks share their source transaction; edits void old ledger entries before recording replacements.
+- Unavailable product mappings or incompatible units produce response `warnings`; never log protected plaintext.
+- Money and people fields stay encrypted. Stock quantities remain open; finance aggregates use `present_aggregate` after Python-side decryption.
+- Phase 2 API/schema: `docs/API_PHASE2.md` and `docs/openapi.phase2.json`.
+
 - backend: `python -m venv .venv` → `pip install -r requirements.txt` → เทสต์ `python -m pytest -q` → รัน `python -m uvicorn app.main:app --port 8000` (ห้าม `--reload` บน Pi, ใช้ worker เดียว)
 - เว็บ: `npm run build` (ระวังไม่เขียนทับ `frontend/index.html`; ถ้าต้องดูขนาดให้ใช้ `--outDir` นอก workspace)
 - Flutter: `flutter analyze`, `flutter test` (ห้าม `flutter build/run` ใน agent)

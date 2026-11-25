@@ -29,3 +29,5 @@ build/
 .presentation-build/
 presentation-output/
 .codex-finalizer/
+PROJECT_FILE_STRUCTURE.md
+/docs/handoff-new-chat.md

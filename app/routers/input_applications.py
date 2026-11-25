@@ -17,12 +17,15 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.input_catalog import suggest_input_catalog_with_status, upsert_input_catalog
+from ..services.input_stock import sync_input_application_stock, validate_input_product
+from ..services.products_stock import void_source_movements
+from ..services.source_types import INPUT_APPLICATION
 from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe
 
 router = APIRouter(tags=["input applications"])
 
 
-def present_input_application(application: InputApplication, role: Role) -> InputApplicationResponse:
+def present_input_application(application: InputApplication, role: Role, warnings: list[str] | None = None) -> InputApplicationResponse:
     is_masked = role != Role.owner
     note_result = present_text_safe(
         application.note_encrypted,
@@ -46,6 +49,7 @@ def present_input_application(application: InputApplication, role: Role) -> Inpu
             "item_name": name_result.value,
             "quantity": quantity_result.value,
             "unit": item.unit,
+            "product_id": item.product_id,
             "is_masked": is_masked,
             "decrypt_failed": name_result.decrypt_failed or quantity_result.decrypt_failed,
         })
@@ -58,6 +62,7 @@ def present_input_application(application: InputApplication, role: Role) -> Inpu
         note=note_result.value if application.note_encrypted else None,
         is_masked=is_masked,
         items=presented_items,
+        warnings=warnings or [],
         decrypt_failed=decrypt_failed,
     )
 
@@ -97,25 +102,41 @@ def create_input_application(cycle_id: int, payload: InputApplicationCreate, db:
     db.add(application)
     db.flush()
 
+    movement_items = []
     for item_payload in payload.items:
         item_name = (item_payload.item_name or "").strip()
         if not item_name:
             continue
 
         catalog = upsert_input_catalog(db, item_name, item_payload.unit, payload.category)
+        explicitly_mapped = "product_id" in item_payload.model_fields_set
+        if explicitly_mapped:
+            try:
+                validate_input_product(db, item_payload.product_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            catalog.product_id = item_payload.product_id
+        product_id = item_payload.product_id if explicitly_mapped else catalog.product_id
+        try:
+            validate_input_product(db, product_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         application.items.append(
             InputItem(
                 item_name_encrypted=encrypt_text(item_name).encode("ascii"),
                 quantity_encrypted=encrypt_number(item_payload.quantity).encode("ascii"),
                 unit=item_payload.unit.strip() if item_payload.unit and item_payload.unit.strip() else (catalog.last_unit or ""),
+                product_id=product_id,
             )
         )
+        movement_items.append((application.items[-1], item_payload.quantity))
 
+    warnings = sync_input_application_stock(db, application, movement_items)
     db.commit()
     db.refresh(application)
     query = active_rows(select(InputApplication).where(InputApplication.id == application.id), InputApplication)
     created = db.scalar(query.options(selectinload(InputApplication.items)))
-    return present_input_application(created, user.role)
+    return present_input_application(created, user.role, warnings)
 
 
 @router.patch("/input-applications/{application_id}", response_model=InputApplicationResponse)
@@ -134,23 +155,41 @@ def update_input_application(application_id: int, payload: InputApplicationUpdat
 
     if payload.items is not None:
         application.items.clear()
+        movement_items = []
         for item_payload in payload.items:
             item_name = (item_payload.item_name or "").strip()
             if not item_name:
                 continue
             catalog = upsert_input_catalog(db, item_name, item_payload.unit, application.category)
+            explicitly_mapped = "product_id" in item_payload.model_fields_set
+            if explicitly_mapped:
+                try:
+                    validate_input_product(db, item_payload.product_id)
+                except ValueError as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
+                catalog.product_id = item_payload.product_id
+            product_id = item_payload.product_id if explicitly_mapped else catalog.product_id
+            try:
+                validate_input_product(db, product_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
             application.items.append(
                 InputItem(
                     item_name_encrypted=encrypt_text(item_name).encode("ascii"),
                     quantity_encrypted=encrypt_number(item_payload.quantity).encode("ascii"),
                     unit=item_payload.unit.strip() if item_payload.unit and item_payload.unit.strip() else (catalog.last_unit or ""),
+                    product_id=product_id,
                 )
             )
+            movement_items.append((application.items[-1], item_payload.quantity))
+        warnings = sync_input_application_stock(db, application, movement_items)
+    else:
+        warnings = []
 
     db.commit()
     query = active_rows(select(InputApplication).where(InputApplication.id == application.id), InputApplication)
     updated = db.scalar(query.options(selectinload(InputApplication.items)))
-    return present_input_application(updated, user.role)
+    return present_input_application(updated, user.role, warnings)
 
 
 @router.delete("/input-applications/{application_id}", status_code=204)
@@ -158,6 +197,7 @@ def delete_input_application(application_id: int, db: Session = Depends(get_db),
     application = get_active(db, InputApplication, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Input application not found")
+    void_source_movements(db, INPUT_APPLICATION, application.id)
     application.deleted_at = utc_now()
     db.commit()
 
@@ -180,6 +220,7 @@ def get_input_catalog_suggestions(q: str = Query(default=""), limit: int = Query
                 last_category=item.last_category,
                 last_used_at=item.last_used_at,
                 use_count=item.use_count,
+                product_id=item.product_id,
                 decrypt_failed=False,
             )
             for item in items

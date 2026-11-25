@@ -8,7 +8,8 @@ from ..models import CropCycle, Role, Task, User, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import TaskCreate, TaskCycleInfo, TaskResponse, TaskUpdate
 from ..security import get_current_user
-from ..services.secure_fields import encrypt_text, present_text_safe, safe_decrypt_text
+from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe, safe_decrypt_text
+from ..services.task_finance import sync_task_finance, void_task_finance
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -33,6 +34,8 @@ def build_task_response(task: Task, role: Role) -> TaskResponse:
         field="title",
     )
     title = title_result.value if task.is_encrypted else task.title
+    labor_result = present_number_safe(task.labor_cost_encrypted, role, table="tasks", row_id=task.id, field="labor_cost")
+    extra_result = present_number_safe(task.extra_cost_encrypted, role, table="tasks", row_id=task.id, field="extra_cost")
 
     return TaskResponse(
         id=task.id,
@@ -41,10 +44,13 @@ def build_task_response(task: Task, role: Role) -> TaskResponse:
         due_date=task.due_date,
         status=task.status,
         source=task.source,
+        labor_cost=labor_result.value,
+        worker_count=task.worker_count,
+        extra_cost=extra_result.value,
         created_at=task.created_at,
         cycle_info=cycle_info,
-        is_masked=task.is_encrypted and role != Role.owner,
-        decrypt_failed=title_result.decrypt_failed,
+        is_masked=(task.is_encrypted or task.labor_cost_encrypted is not None or task.extra_cost_encrypted is not None) and role != Role.owner,
+        decrypt_failed=title_result.decrypt_failed or labor_result.decrypt_failed or extra_result.decrypt_failed,
     )
 
 
@@ -108,13 +114,19 @@ def create_task(
 
     task_data = payload.model_dump()
     task_title = task_data.pop("title")
+    labor_cost = task_data.pop("labor_cost")
+    extra_cost = task_data.pop("extra_cost")
     is_encrypted = task_data.get("source") == "manual"
     task = Task(
         **task_data,
         title=encrypt_text(task_title) if is_encrypted else task_title,
         is_encrypted=is_encrypted,
+        labor_cost_encrypted=encrypt_number(labor_cost).encode("ascii") if labor_cost is not None else None,
+        extra_cost_encrypted=encrypt_number(extra_cost).encode("ascii") if extra_cost is not None else None,
     )
     db.add(task)
+    db.flush()
+    sync_task_finance(db, task, user.id)
     db.commit()
     db.refresh(task)
 
@@ -146,6 +158,7 @@ def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     update_data = payload.model_dump(exclude_unset=True)
+    finance_fields_changed = bool({"status", "cycle_id", "due_date", "labor_cost", "worker_count", "extra_cost"} & set(update_data))
     if "cycle_id" in update_data and update_data["cycle_id"] is not None:
         cycle = get_active(db, CropCycle, update_data["cycle_id"])
         if not cycle:
@@ -173,10 +186,15 @@ def update_task(
             task.is_encrypted = False
 
     for field, value in update_data.items():
-        if field not in {"title", "source"}:
+        if field in {"labor_cost", "extra_cost"}:
+            token_field = "labor_cost_encrypted" if field == "labor_cost" else "extra_cost_encrypted"
+            setattr(task, token_field, encrypt_number(value).encode("ascii") if value is not None else None)
+        elif field not in {"title", "source"}:
             setattr(task, field, value)
     task.source = next_source
 
+    if finance_fields_changed:
+        sync_task_finance(db, task, user.id)
     db.commit()
     db.refresh(task)
 
@@ -206,4 +224,5 @@ def delete_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.deleted_at = utc_now()
+    void_task_finance(db, task.id)
     db.commit()

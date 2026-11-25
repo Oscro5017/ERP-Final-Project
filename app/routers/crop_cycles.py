@@ -7,7 +7,9 @@ from ..models import CropCycle, CropCycleStatusLog, CycleStatus, Task, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import CropCycleCreate, CropCycleResponse, CropCycleStatusLogResponse, CropCycleUpdate
 from ..security import get_current_user
+from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
 from ..services.crop_cycle_lifecycle import sync_crop_cycle_lifecycle
+from ..services.task_finance import void_task_finance
 
 router = APIRouter(prefix="/crop-cycles", tags=["crop cycles"])
 
@@ -28,8 +30,11 @@ def create_cycle(payload: CropCycleCreate, db: Session = Depends(get_db), _=Depe
     db.add(cycle)
     db.flush()
     sync_crop_cycle_lifecycle(db, cycle, created=True)
+    warnings = sync_crop_cycle_harvest_stock(db, cycle)
     db.commit()
-    return db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id)))
+    response = CropCycleResponse.model_validate(db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id))))
+    response.warnings = warnings
+    return response
 
 
 @router.patch("/{cycle_id}", response_model=CropCycleResponse)
@@ -42,8 +47,11 @@ def update_cycle(cycle_id: int, payload: CropCycleUpdate, db: Session = Depends(
         setattr(cycle, field, value)
     db.flush()
     sync_crop_cycle_lifecycle(db, cycle, previous_status=previous_status)
+    warnings = sync_crop_cycle_harvest_stock(db, cycle)
     db.commit()
-    return db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id)))
+    response = CropCycleResponse.model_validate(db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id))))
+    response.warnings = warnings
+    return response
 
 
 @router.delete("/{cycle_id}", status_code=204)
@@ -52,8 +60,10 @@ def delete_cycle(cycle_id: int, db: Session = Depends(get_db), _=Depends(get_cur
     if not cycle:
         raise HTTPException(status_code=404, detail="Crop cycle not found")
     cycle.deleted_at = utc_now()
+    sync_crop_cycle_harvest_stock(db, cycle)
     for task in db.scalars(active_rows(select(Task).where(Task.cycle_id == cycle.id), Task)).all():
         task.deleted_at = cycle.deleted_at
+        void_task_finance(db, task.id, "Crop cycle removed")
     db.commit()
 
 

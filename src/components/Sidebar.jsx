@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Activity,
   ArrowDownToLine,
   ArrowUpFromLine,
   Boxes,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   CloudSun,
   LayoutDashboard,
+  Lightbulb,
   Sprout,
   Users,
   Wallet,
@@ -27,24 +26,28 @@ const navigationGroups = [
     { name: 'บันทึกย้อนหลัง', to: '/weather#history' },
   ] },
   { id: 'products', name: 'สินค้า & คลัง', icon: Boxes, children: [
-    { name: 'สินค้า', disabled: true },
-    { name: 'คลังสินค้า', disabled: true },
+    { name: 'สินค้า', to: '/products' },
+    { name: 'คลังสินค้า', to: '/stock' },
   ] },
   { id: 'trade', name: 'รับเข้า / ส่งออก', icon: ArrowDownToLine, children: [
-    { name: 'รับเข้า', disabled: true },
-    { name: 'ส่งออก', disabled: true, icon: ArrowUpFromLine },
+    { name: 'รับเข้า', to: '/trade' },
+    { name: 'ส่งออก', to: '/trade', icon: ArrowUpFromLine },
   ] },
   { id: 'finance', name: 'การเงิน', icon: Wallet, children: [
-    { name: 'ภาพรวม', disabled: true },
+    { name: 'ภาพรวม', to: '/finance' },
     { name: 'รายงาน', disabled: true },
   ] },
   { id: 'partners', name: 'คู่ค้า', icon: Users, children: [
     { name: 'ลูกค้า', to: '/partners/customers' },
-    { name: 'ซัพพลายเออร์', disabled: true },
+    { name: 'ซัพพลายเออร์', to: '/partners/suppliers' },
+  ] },
+  { id: 'insights', name: 'ข้อมูลเชิงลึก', icon: Lightbulb, children: [
+    { name: 'คำแนะนำ', to: '/insights' },
   ] },
 ];
 
-function Sidebar({ collapsed, onToggle }) {
+function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }) {
+  const isCollapsed = collapsed && !mobileOpen;
   const location = useLocation();
   const activeGroup = navigationGroups.find((group) => group.children.some((item) => (
     item.to && location.pathname === item.to.split('#')[0]
@@ -56,37 +59,38 @@ function Sidebar({ collapsed, onToggle }) {
   }, [activeGroup]);
 
   const toggleGroup = (groupId) => {
-    if (collapsed) onToggle();
+    if (isCollapsed) onToggle();
     setExpandedGroup((current) => current === groupId ? null : groupId);
   };
 
   return (
-    <aside className={`fixed left-0 top-0 z-30 h-screen border-r border-farm-700/20 bg-farm-900 text-white transition-all duration-300 ${collapsed ? 'w-20' : 'w-72'}`}>
+    <aside className={`fixed left-0 top-0 z-40 h-dvh border-r border-farm-700/20 bg-farm-900 text-white shadow-xl shadow-slate-950/10 transition-[width,transform] duration-300 md:translate-x-0 md:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${isCollapsed ? 'md:w-[76px]' : 'w-[min(82vw,280px)] md:w-64 xl:w-72'}`}>
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between px-4 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-farm-700/80">
-              <Sprout size={20} />
+        <div className={`flex min-h-[88px] items-center border-b border-white/10 px-4 ${isCollapsed ? 'flex-col justify-center gap-2 py-3' : 'justify-between py-5'}`}>
+          <div className={`flex min-w-0 items-center ${isCollapsed ? '' : 'gap-3'}`}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-farm-700/80 text-farm-50">
+              <Sprout size={20} aria-hidden="true" />
             </div>
-            {!collapsed && <div>
-              <p className="text-sm font-semibold">Organic Farm</p>
-              <p className="text-xs text-farm-300">Management System</p>
+            {!isCollapsed && <div className="min-w-0">
+              <p className="truncate text-sm font-semibold tracking-[0.01em]">Organic Farm</p>
+              <p className="truncate text-xs text-farm-300">Management System</p>
             </div>}
           </div>
-          <button onClick={onToggle} className="rounded-full p-2 text-farm-300 transition hover:bg-farm-800">
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          <button onClick={onToggle} aria-label={isCollapsed ? 'ขยายเมนู' : 'ย่อเมนู'} title={isCollapsed ? 'ขยายเมนู' : 'ย่อเมนู'} className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-farm-200 transition hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-farm-300 md:inline-flex ${isCollapsed ? '' : 'ml-1'}`}>
+            {isCollapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
           </button>
         </div>
 
-        <nav className="mt-4 flex-1 px-3">
+        <nav aria-label="เมนูหลัก" className={`mt-3 flex-1 overflow-y-auto pb-4 ${isCollapsed ? 'px-2' : 'px-3'}`}>
           <NavLink
             to="/"
             end
-            title={collapsed ? 'ภาพรวม' : undefined}
-            className={({ isActive }) => `mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${isActive ? 'bg-farm-700 text-white shadow-soft' : 'text-farm-100 hover:bg-farm-800'}`}
+            title={isCollapsed ? 'ภาพรวม' : undefined}
+            className={({ isActive }) => `mb-1.5 flex min-h-11 items-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-farm-300 ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} ${isActive ? 'bg-farm-700 text-white shadow-soft' : 'text-farm-100 hover:bg-farm-800'}`}
+            onClick={onNavigate}
           >
-            <LayoutDashboard size={18} />
-            {!collapsed && <span>ภาพรวม</span>}
+            <LayoutDashboard size={18} aria-hidden="true" />
+            {!isCollapsed && <span>ภาพรวม</span>}
           </NavLink>
 
           {navigationGroups.map((group) => {
@@ -98,19 +102,19 @@ function Sidebar({ collapsed, onToggle }) {
               <div key={group.id}>
                 <button
                   type="button"
-                  title={collapsed ? group.name : undefined}
-                  aria-expanded={!collapsed && isExpanded}
+                  title={isCollapsed ? group.name : undefined}
+                  aria-expanded={!isCollapsed && isExpanded}
                   onClick={() => toggleGroup(group.id)}
-                  className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${hasActiveChild ? 'bg-farm-700 text-white' : 'text-farm-100 hover:bg-farm-800'}`}
+                  className={`mb-1.5 flex min-h-11 w-full items-center rounded-xl text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-farm-300 ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} ${hasActiveChild ? 'bg-farm-700 text-white' : 'text-farm-100 hover:bg-farm-800'}`}
                 >
-                  <Icon size={18} />
-                  {!collapsed && <>
+                  <Icon size={18} aria-hidden="true" />
+                  {!isCollapsed && <>
                     <span className="flex-1">{group.name}</span>
                     <ChevronDown size={15} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </>}
                 </button>
 
-                {!collapsed && isExpanded && (
+                {!isCollapsed && isExpanded && (
                   <div className="mb-2 ml-6 border-l border-farm-700/70 py-1 pl-3">
                     {group.children.map((item) => {
                       const ChildIcon = item.icon;
@@ -125,9 +129,10 @@ function Sidebar({ collapsed, onToggle }) {
 
                       return (
                         <NavLink
-                          key={item.to}
+                          key={item.name}
                           to={item.to}
                           end={!item.to.includes('#')}
+                          onClick={onNavigate}
                           className={({ isActive }) => `mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-farm-800 text-white' : 'text-farm-100 hover:bg-farm-800/70'}`}
                         >
                           {ChildIcon && <ChildIcon size={14} />}

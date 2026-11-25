@@ -85,14 +85,14 @@
 - เพิ่มตารางว่าง `Recommendation`; ยังไม่มี rule engine, API หรือ UI
 - Migration สำรองนอก repo พร้อมจำกัด ACL, ตรวจ round-trip และ integrity; tests/build ผ่าน
 
-**Phase 2 — ยังไม่เริ่ม**:
+**Phase 2 — backend implementation เสร็จบน `backend/products-stock`; ตรวจส่งมอบต่อใน `docs/phases/phase2/PROGRESS.md`**:
 - Contract + Order (พร้อม `delivery_location`)
 - Dashboard เปรียบเทียบรายได้ต่อลูกค้า
 - StockItem แบบเบา ๆ
 - Transaction (การเงินจริง)
 - LaborLog (ค่าแรงจ้างรายวัน — ต้องเก็บ `worker_count` + ชั่วโมงทำงาน + ประเภทงาน ไม่ใช่แค่ยอดเงิน)
 - Reports: group by ไตรมาส/ฤดู, แนวโน้มราคาตามช่วง/พื้นที่
-- ช่องรับผลวิเคราะห์: Phase 2 เดิมระบุ `Insight` แต่ Phase 1e เพิ่ม `Recommendation` เป็น data hook; ก่อนทำ Phase 2 ให้รวมแนวคิด/ตารางทั้งสองเป็น resource เดียว ห้ามสร้างซ้ำ และค่อยกำหนด endpoint/UI ใน spec Phase 2
+- ช่องรับผลวิเคราะห์: Phase 2 รวม `Insight` กับ `Recommendation` เป็น resource เดียวแบบ additive; API/schema อยู่ใน `docs/API_PHASE2.md` และ `docs/openapi.phase2.json`
 
 **Phase 3 — Infrastructure**: ทดสอบ Raspberry Pi 4 (2GB) จริง, backup อัตโนมัติของ `erp.db`, deploy จริง + Cloudflare Tunnel
 

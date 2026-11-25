@@ -14,6 +14,13 @@ const apiPrefixes = [
   '/tasks',
   '/weather/',
   '/sensors',
+  '/products',
+  '/suppliers',
+  '/trade',
+  '/stock',
+  '/finance',
+  '/dashboard',
+  '/insights',
 ];
 
 export default defineConfig({

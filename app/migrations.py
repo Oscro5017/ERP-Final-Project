@@ -11,7 +11,19 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from .services.secure_fields import decrypt_number, decrypt_text, encrypt_number, encrypt_text, hash_catalog_name
-from .models import CropCycleStatusLog, SystemMeta
+from .models import (
+    CropCycleStatusLog,
+    CropType,
+    FinanceEntry,
+    Insight,
+    Recommendation,
+    Product,
+    StockDocument,
+    StockDocumentLine,
+    StockMovement,
+    Supplier,
+    SystemMeta,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +31,138 @@ logger = logging.getLogger(__name__)
 def migrate_system_meta(engine: Engine) -> None:
     """Create the additive canary metadata table without backing up existing data."""
     SystemMeta.__table__.create(bind=engine, checkfirst=True)
+
+
+def migrate_products_stock(engine: Engine) -> None:
+    """Create product and stock ledger tables additively and idempotently."""
+    Product.__table__.create(bind=engine, checkfirst=True)
+    StockMovement.__table__.create(bind=engine, checkfirst=True)
+
+
+def migrate_stock_documents(engine: Engine) -> None:
+    """Create supplier and stock document tables additively and idempotently."""
+    for model in (Supplier, StockDocument, StockDocumentLine):
+        model.__table__.create(bind=engine, checkfirst=True)
+
+
+def migrate_crop_type_product_mapping(engine: Engine) -> None:
+    """Add the optional crop output mapping without rewriting existing crop types."""
+    inspector = inspect(engine)
+    if "crop_types" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("crop_types")}
+    if "product_id" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE crop_types ADD COLUMN product_id INTEGER "
+                "REFERENCES products(id) ON DELETE SET NULL"
+            ))
+    with engine.begin() as connection:
+        connection.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_crop_types_product_id "
+            "ON crop_types(product_id)"
+        ))
+
+
+def migrate_input_product_mapping(engine: Engine) -> None:
+    """Add optional product mappings to input items and their reusable catalog."""
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    for table_name in ("input_items", "input_catalog"):
+        if table_name not in tables:
+            continue
+        columns = {column["name"] for column in inspect(engine).get_columns(table_name)}
+        if "product_id" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text(
+                    f"ALTER TABLE {table_name} ADD COLUMN product_id INTEGER "
+                    "REFERENCES products(id) ON DELETE SET NULL"
+                ))
+
+
+def migrate_finance_entries(engine: Engine) -> None:
+    """Create the additive finance ledger table and its query indexes."""
+    FinanceEntry.__table__.create(bind=engine, checkfirst=True)
+
+
+def migrate_task_finance_fields(engine: Engine) -> None:
+    """Add optional encrypted task costs and worker count without changing rows."""
+    inspector = inspect(engine)
+    if "tasks" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("tasks")}
+    additions = {
+        "labor_cost_encrypted": "BLOB",
+        "worker_count": "INTEGER",
+        "extra_cost_encrypted": "BLOB",
+        "stock_alert_product_id": "INTEGER REFERENCES products(id) ON DELETE SET NULL",
+    }
+    with engine.begin() as connection:
+        for name, column_type in additions.items():
+            if name not in columns:
+                connection.execute(text(f"ALTER TABLE tasks ADD COLUMN {name} {column_type}"))
+    with engine.begin() as connection:
+        connection.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_open_stock_alert "
+            "ON tasks(stock_alert_product_id) "
+            "WHERE stock_alert_product_id IS NOT NULL AND status = 'pending' AND deleted_at IS NULL"
+        ))
+
+
+def migrate_customer_area_encryption(engine: Engine) -> None:
+    """Add an optional encrypted customer area field without rewriting existing data."""
+    inspector = inspect(engine)
+    if "customers" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("customers")}
+    if "area_encrypted" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE customers ADD COLUMN area_encrypted BLOB"))
+
+
+def migrate_unified_insights(engine: Engine) -> None:
+    """Create the encrypted unified insight table and copy legacy recommendations once."""
+    Insight.__table__.create(bind=engine, checkfirst=True)
+    if not inspect(engine).has_table(Recommendation.__tablename__):
+        return
+    with engine.begin() as connection:
+        rows = connection.execute(text(
+            "SELECT id, kind, title, message, reason, window_start, window_end, status, task_id, created_at, updated_at "
+            "FROM recommendations ORDER BY id"
+        )).mappings().all()
+        for row in rows:
+            if connection.scalar(text(
+                "SELECT id FROM insights WHERE legacy_recommendation_id = :legacy_id"
+            ), {"legacy_id": row["id"]}) is not None:
+                continue
+            old_kind = str(row["kind"] or "recommendation").casefold()
+            kind = old_kind if old_kind in {"insight", "recommendation", "alert"} else "recommendation"
+            old_status = str(row["status"] or "new").casefold()
+            status = old_status if old_status in {"new", "seen", "dismissed", "done"} else ("done" if old_status == "completed" else "new")
+            task_id = row["task_id"]
+            cycle_id = connection.scalar(text("SELECT cycle_id FROM tasks WHERE id = :task_id"), {"task_id": task_id}) if task_id else None
+            body_parts = [str(row["message"] or "").strip()]
+            reason = str(row["reason"] or "").strip()
+            if reason:
+                body_parts.append(f"เหตุผล: {reason}")
+            body = "\n\n".join(part for part in body_parts if part)
+            connection.execute(text(
+                "INSERT INTO insights (kind, source, title_encrypted, body_encrypted, severity, valid_from, valid_until, "
+                "crop_cycle_id, task_id, status, legacy_recommendation_id, created_at, updated_at) "
+                "VALUES (:kind, 'rule', :title, :body, 'info', :valid_from, :valid_until, :cycle_id, :task_id, :status, :legacy_id, :created_at, :updated_at)"
+            ), {
+                "kind": kind,
+                "title": encrypt_text(str(row["title"] or "")).encode("ascii"),
+                "body": encrypt_text(body).encode("ascii"),
+                "valid_from": row["window_start"],
+                "valid_until": row["window_end"],
+                "cycle_id": cycle_id,
+                "task_id": task_id,
+                "status": status,
+                "legacy_id": row["id"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            })
 
 
 def _configured_backup_dir(backup_dir: Path | str | None) -> Path:

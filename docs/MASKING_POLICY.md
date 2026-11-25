@@ -36,8 +36,8 @@
 | 13 | **จำนวนเงินทุกชนิด** (ราคา/หน่วย, ยอดรวม, รายรับ, ต้นทุนซื้อ, ค่าแรง, รายจ่ายอื่น, มูลค่าสต็อก, กำไร และ aggregate ของสิ่งเหล่านี้) | **ปิด** | ✔ รายได้ / ◐ รายการอื่น | Transaction/Order/LaborLog (Phase 2) | ยอดรายได้เป็นข้อกำหนดเดิมของเจ้าของ; ต้นทุน/ค่าแรง/ราคา ปิดเพื่อให้สอดคล้องกัน (ป้องกันการคำนวณย้อน) ใช้ `encrypt_number`/`present_number`/`present_aggregate` ที่มีแล้ว |
 | 14 | หมวดหมู่ (`category`), หน่วย, วันที่, สถานะ | **เปิด** | ✔ | ทุกตาราง | ใช้ทำตัวกรอง/รวมยอด |
 | 15 | ข้อมูลอากาศ, เซนเซอร์, รอบปลูก, ผลผลิต (`harvest_quantity_kg`) | **เปิด** | ✔ | `WeatherLog`, `ForecastSnapshot`, `SensorReading`, `CropCycle` | |
-| 16 | ชื่อเมล็ด/พันธุ์ | **เปิด (ปัจจุบัน)** | ✖ | Product (Phase 2) | ต้องถามเจ้าของ |
-| 17 | ชื่อผัก/พืชที่ขาย | **เปิด** | ✔ | `CropType`, Product | |
+| 16 | ชื่อเมล็ด/พันธุ์ | **ปิดใน `products` (ชั่วคราว)** | ◐ | `Product.name_encrypted` (Phase 2); `CropType` และข้อมูลรอบปลูกไม่เปลี่ยนสถานะ | ใช้เกณฑ์นี้กับตาราง `products` เท่านั้น; ค่าชั่วคราวจนกว่าเจ้าของฟาร์มยืนยัน |
+| 17 | ชื่อผัก/พืชที่ขาย | **ปิดใน `products` (ชั่วคราว)** | ◐ | `Product.name_encrypted` (Phase 2); `CropType` และข้อมูลรอบปลูกไม่เปลี่ยนสถานะ | ใช้เกณฑ์นี้กับตาราง `products` เท่านั้น; ค่าชั่วคราวจนกว่าเจ้าของฟาร์มยืนยัน |
 
 ## กติกาการเปลี่ยนนโยบาย
 
@@ -60,6 +60,19 @@
 การปิดบังระดับฟิลด์กันการเห็นผ่านแอปและการเปิดไฟล์ฐานข้อมูลดูเท่านั้น ผู้ที่เข้าถึง shell ของเครื่องและอ่าน `ENCRYPTION_KEY` ได้ยังถอดรหัสได้ ช่วงพัฒนาให้ใช้ข้อมูลสมมติ ส่วน production บน Pi ให้ใช้ key ของเจ้าของ ปริมาณที่เปิดอยู่อาจใช้ประมาณรายได้คร่าวๆ ได้เมื่อรวมกับราคาตลาด
 
 ## บันทึกการเปลี่ยนแปลง
+
+### Phase 2 fields
+
+| Data | Policy |
+|---|---|
+| Product names | Encrypted; developer receives ciphertext |
+| Supplier/customer names, contacts, areas, notes | Encrypted; developer receives ciphertext |
+| Document notes, void reasons, unit prices, line amounts | Encrypted |
+| Input item names and quantities | Encrypted |
+| Finance amounts, descriptions, void reasons and aggregates | Encrypted; aggregates use `present_aggregate` |
+| Task labor/extra costs and private titles | Encrypted |
+| Insight title/body | Encrypted |
+| Stock quantity, unit, document date/number, category and status | Plaintext by policy |
 
 | วันที่ | การเปลี่ยนแปลง | โดย |
 |---|---|---|

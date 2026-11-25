@@ -15,8 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
-from .migrations import migrate_crop_cycles, migrate_customer_contact_encryption, migrate_phase1c, migrate_phase1e, migrate_system_meta
-from .routers import auth, crop_cycles, customers, input_applications, reference, sensors, tasks, weather
+from .migrations import migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
+from .routers import auth, crop_cycles, customers, dashboard, finance, input_applications, insights, products, reference, sensors, stock, suppliers, tasks, trade_documents, weather
 from .seed import seed_database, validate_production_default_passwords
 from .services.encryption_canary import ensure_encryption_canary
 from .services.weather import (
@@ -120,10 +120,24 @@ async def lifespan(_app: FastAPI):
         validate_production_default_passwords(db, settings)
 
     migrate_system_meta(engine)
-    Base.metadata.create_all(bind=engine)
+    migrated_tables = {
+        "products", "stock_movements", "suppliers", "stock_documents",
+        "stock_document_lines", "finance_entries",
+    }
+    Base.metadata.create_all(bind=engine, tables=[table for table in Base.metadata.sorted_tables if table.name not in migrated_tables])
+    # CropType's new optional mapping points to products; create that additive
+    # table before the canary audit reflects foreign-key dependencies.
+    migrate_products_stock(engine)
     with SessionLocal() as db:
         ensure_encryption_canary(db, engine, settings)
 
+    migrate_stock_documents(engine)
+    migrate_crop_type_product_mapping(engine)
+    migrate_input_product_mapping(engine)
+    migrate_finance_entries(engine)
+    migrate_task_finance_fields(engine)
+    migrate_customer_area_encryption(engine)
+    migrate_unified_insights(engine)
     migrate_crop_cycles(engine)
     migrate_phase1c(engine)
     migrate_customer_contact_encryption(engine, backup_dir=settings.backup_dir)
@@ -184,8 +198,15 @@ def create_app(settings=None) -> FastAPI:
     api.include_router(auth.router)
     api.include_router(reference.router)
     api.include_router(crop_cycles.router)
+    api.include_router(dashboard.router)
     api.include_router(customers.router)
+    api.include_router(finance.router)
+    api.include_router(insights.router)
     api.include_router(input_applications.router)
+    api.include_router(products.router)
+    api.include_router(suppliers.router)
+    api.include_router(stock.router)
+    api.include_router(trade_documents.router)
     api.include_router(tasks.router)
     api.include_router(weather.router)
     api.include_router(sensors.router)
@@ -195,7 +216,7 @@ def create_app(settings=None) -> FastAPI:
     def spa_fallback(path: str):
         if path.rstrip("/") == "weather":
             return FileResponse("frontend/index.html")
-        if path.startswith(("auth", "crop-cycles", "customers", "tables", "batches", "crop-types", "tasks", "weather", "sensors", "input-applications", "input-catalog")):
+        if path.startswith(("auth", "crop-cycles", "customers", "products", "tables", "batches", "crop-types", "tasks", "weather", "sensors", "input-applications", "input-catalog")):
             raise HTTPException(status_code=404, detail="Not Found")
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(status_code=404, detail="Not Found")

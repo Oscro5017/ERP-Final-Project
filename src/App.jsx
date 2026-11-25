@@ -7,6 +7,12 @@ import Weather from './pages/Weather';
 import FarmPlots from './pages/FarmPlots';
 import PlotDetail from './pages/PlotDetail';
 import Activities from './pages/Activities';
+import Products from './pages/Products';
+import Stock from './pages/Stock';
+import TradeDocuments from './pages/TradeDocuments';
+import Finance from './pages/Finance';
+import Suppliers from './pages/Suppliers';
+import Insights from './pages/Insights';
 import CustomerPanel from './components/CustomerPanel';
 import { clearToken, getToken } from './lib/api';
 
@@ -43,7 +49,13 @@ function App() {
         <Route path="/plots/:id" element={<PlotDetail />} />
         <Route path="/activities" element={<Activities />} />
         <Route path="/harvest" element={<Navigate to="/plots?status=harvested" replace />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/stock" element={<Stock />} />
+        <Route path="/trade" element={<TradeDocuments />} />
+        <Route path="/finance" element={<Finance />} />
         <Route path="/partners/customers" element={<CustomerPanel />} />
+        <Route path="/partners/suppliers" element={<Suppliers />} />
+        <Route path="/insights" element={<Insights />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
