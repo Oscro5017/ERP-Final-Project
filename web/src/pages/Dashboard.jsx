@@ -7,6 +7,8 @@ import PlotChart from '../components/PlotChart';
 import TaskWidget from '../components/TaskWidget';
 import WeatherWidget from '../components/WeatherWidget';
 import Toast from '../components/Toast';
+import { formatMoney } from '../utils/format';
+import { MASKED_NUMBER, readAmount } from '../utils/masking';
 
 function Dashboard() {
   const [summary, setSummary] = useState(null);
@@ -37,16 +39,10 @@ function Dashboard() {
     };
   }, []);
 
-  const profit = summary?.finance_month?.profit;
+  const profit = readAmount(summary?.finance_month?.profit);
   const formattedProfit = !summary
     ? '—'
-    : profit && typeof profit === 'object'
-      ? (profit.is_masked
-        ? '••••••'
-        : (profit.value === null || profit.value === undefined
-          ? '—'
-          : `${Number(profit.value).toLocaleString()} ฿`))
-      : (typeof profit === 'number' ? `${profit.toLocaleString()} ฿` : (profit ?? '—'));
+    : profit.isMasked ? MASKED_NUMBER : (profit.value === null ? '—' : formatMoney(profit.value));
 
   const tasksOverdue = summary?.tasks_overdue ?? 0;
 

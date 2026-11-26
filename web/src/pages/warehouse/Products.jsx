@@ -4,6 +4,7 @@ import { api, getRole } from '../../lib/api';
 import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
 import { CATEGORIES, CATEGORY_LABELS, itemName } from '../../utils/itemCategories';
+import { formatQuantity } from '../../utils/format';
 
 const PAGE_LIMIT = 50;
 
@@ -21,13 +22,6 @@ const emptyAdjustForm = {
   note: '',
   occurred_at: '',
 };
-
-function formatNumber(value) {
-  if (value === null || value === undefined || value === '') return '-';
-  const num = Number(value);
-  if (Number.isNaN(num)) return '-';
-  return num.toLocaleString('th-TH', { maximumFractionDigits: 3 });
-}
 
 function getStockStatus(item) {
   if (item.is_negative) {
@@ -362,7 +356,7 @@ function Products() {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 text-sm text-slate-500">
-          <span>ทั้งหมด {total.toLocaleString('th-TH')} รายการ</span>
+          <span>ทั้งหมด {formatQuantity(total)} รายการ</span>
           {!isOwner && (
             <span className="text-xs text-slate-400">
               ชื่อถูกเข้ารหัสตามสิทธิ์ผู้ใช้งาน
@@ -429,10 +423,10 @@ function Products() {
                       </td>
                       <td className="px-4 py-3 text-slate-700">{item.unit}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">
-                        {formatNumber(item.on_hand)}
+                        {formatQuantity(item.on_hand)}
                       </td>
                       <td className="px-4 py-3 text-right text-slate-600">
-                        {formatNumber(item.reorder_point)}
+                        {formatQuantity(item.reorder_point)}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
@@ -640,7 +634,7 @@ function Products() {
               <div className="mt-1 flex items-center justify-between gap-2">
                 <span className="text-slate-500">คงเหลือในระบบ</span>
                 <span className="font-semibold text-slate-800">
-                  {formatNumber(adjustingProduct.on_hand)} {adjustingProduct.unit}
+                  {formatQuantity(adjustingProduct.on_hand)} {adjustingProduct.unit}
                 </span>
               </div>
             </div>
@@ -681,7 +675,7 @@ function Products() {
               <p className="text-xs text-slate-500">
                 ผลต่างจากยอดเดิม:{' '}
                 <span className={adjustDiff < 0 ? 'font-semibold text-rose-600' : 'font-semibold text-farm-700'}>
-                  {adjustDiff > 0 ? `+${formatNumber(adjustDiff)}` : formatNumber(adjustDiff)} {adjustingProduct.unit}
+                  {adjustDiff > 0 ? `+${formatQuantity(adjustDiff)}` : formatQuantity(adjustDiff)} {adjustingProduct.unit}
                 </span>
               </p>
             )}

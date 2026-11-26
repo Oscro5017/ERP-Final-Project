@@ -4,6 +4,7 @@ import { api, getRole } from '../../lib/api';
 import { formatThaiDate, getLocalDateString, getRelativeDayLabel } from '../../utils/dateUtils';
 import PlantingPrompt from '../../components/PlantingPrompt';
 import ThaiDateInput from '../../components/ThaiDateInput';
+import { MASKED_TEXT } from '../../utils/masking';
 
 const emptyForm = () => ({ title: '', due_date: getLocalDateString(), cycle_id: '' });
 
@@ -100,7 +101,7 @@ function Activities() {
   };
 
   const deleteTask = async (task) => {
-    if (!window.confirm(`ลบงาน “${task.is_masked ? 'ข้อมูลเข้ารหัส' : task.title}” ใช่หรือไม่`)) return;
+    if (!window.confirm(`ลบงาน “${task.is_masked ? MASKED_TEXT : task.title}” ใช่หรือไม่`)) return;
     try {
       await api(`/tasks/${task.id}`, { method: 'DELETE' });
       setTasks((current) => current.filter((item) => item.id !== task.id));
@@ -171,7 +172,7 @@ function Activities() {
                     </button>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className={`font-medium ${task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{task.is_masked ? 'ข้อมูลเข้ารหัส' : task.title}</h2>
+                        <h2 className={`font-medium ${task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{task.is_masked ? MASKED_TEXT : task.title}</h2>
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${task.source === 'auto' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600'}`}>{task.source === 'auto' ? 'อัตโนมัติ' : 'บันทึกเอง'}</span>
                       </div>
                       <p className="mt-1 text-xs text-slate-500">{task.cycle_info ? `โต๊ะ ${task.cycle_info.table_number} · ${task.cycle_info.crop_name} · รอบ ${task.cycle_info.cycle_code}` : 'ไม่ผูกกับรอบปลูก'}</p>

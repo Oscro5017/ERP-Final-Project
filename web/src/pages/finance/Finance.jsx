@@ -12,6 +12,8 @@ import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
 import { api, getRole } from '../../lib/api';
 import { formatThaiDate, getLocalDateString } from '../../utils/dateUtils';
+import { formatMoney } from '../../utils/format';
+import { MASKED_NUMBER, MASKED_TEXT, readAmount } from '../../utils/masking';
 
 const PAGE_LIMIT = 50;
 
@@ -59,28 +61,7 @@ function createEmptyForm() {
   };
 }
 
-function extractSummaryMetric(metric) {
-  if (metric && typeof metric === 'object' && 'value' in metric) {
-    return { value: metric.value, isMasked: Boolean(metric.is_masked) };
-  }
-  return { value: metric, isMasked: false };
-}
-
-function formatAmount(amount) {
-  if (amount === null || amount === undefined || amount === '') return '-';
-  if (typeof amount === 'number') {
-    return Number.isFinite(amount) ? `${amount.toLocaleString('th-TH')} ฿` : '-';
-  }
-  if (typeof amount === 'string' && /^-?\d+(\.\d+)?$/.test(amount.trim())) {
-    const parsed = Number(amount);
-    if (Number.isFinite(parsed)) {
-      return `${parsed.toLocaleString('th-TH')} ฿`;
-    }
-  }
-  return amount;
-}
-
-function MaskedIndicator({ label = '••••••' }) {
+function MaskedIndicator({ label = MASKED_NUMBER }) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-500"
@@ -305,16 +286,16 @@ function Finance() {
 
   const summaryRow = summary?.items?.[0] || null;
   const fallbackMasked = Boolean(
-    extractSummaryMetric(summary?.unallocated_expense).isMasked || (role && !isOwner),
+    readAmount(summary?.unallocated_expense).isMasked || (role && !isOwner),
   );
   const incomeMetric = summaryRow
-    ? extractSummaryMetric(summaryRow.income)
+    ? readAmount(summaryRow.income)
     : { value: 0, isMasked: fallbackMasked };
   const expenseMetric = summaryRow
-    ? extractSummaryMetric(summaryRow.expense)
+    ? readAmount(summaryRow.expense)
     : { value: 0, isMasked: fallbackMasked };
   const profitMetric = summaryRow
-    ? extractSummaryMetric(summaryRow.profit)
+    ? readAmount(summaryRow.profit)
     : { value: 0, isMasked: fallbackMasked };
 
   const currentPage = Math.floor(offset / PAGE_LIMIT) + 1;
@@ -431,7 +412,7 @@ function Finance() {
                 {incomeMetric.isMasked ? (
                   <MaskedIndicator />
                 ) : (
-                  formatAmount(incomeMetric.value)
+                  formatMoney(incomeMetric.value)
                 )}
               </div>
             </div>
@@ -452,7 +433,7 @@ function Finance() {
                 {expenseMetric.isMasked ? (
                   <MaskedIndicator />
                 ) : (
-                  formatAmount(expenseMetric.value)
+                  formatMoney(expenseMetric.value)
                 )}
               </div>
             </div>
@@ -473,7 +454,7 @@ function Finance() {
                 {profitMetric.isMasked ? (
                   <MaskedIndicator />
                 ) : (
-                  formatAmount(profitMetric.value)
+                  formatMoney(profitMetric.value)
                 )}
               </div>
             </div>
@@ -575,7 +556,7 @@ function Finance() {
                               isVoid ? 'line-through opacity-60' : ''
                             }`}
                           >
-                            {formatAmount(entry.amount)}
+                            {formatMoney(entry.amount)}
                           </span>
                         )}
                       </td>
@@ -591,7 +572,7 @@ function Finance() {
                         {isVoid && entry.void_reason && (
                           <div className="mt-1 text-xs text-rose-500">
                             เหตุผลยกเลิก:{' '}
-                            {entry.is_masked ? 'ข้อมูลถูกปกปิด' : entry.void_reason}
+                            {entry.is_masked ? MASKED_TEXT : entry.void_reason}
                           </div>
                         )}
                       </td>
@@ -819,7 +800,7 @@ function Finance() {
               <p className="mt-1">
                 จำนวนเงิน:{' '}
                 <span className="font-semibold text-slate-800">
-                  {voidingEntry.is_masked ? '••••••' : formatAmount(voidingEntry.amount)}
+                  {voidingEntry.is_masked ? MASKED_NUMBER : formatMoney(voidingEntry.amount)}
                 </span>
               </p>
             </div>

@@ -10,6 +10,7 @@ import { formatThaiDate, getLocalDateString } from '../utils/dateUtils';
 import { CATEGORY_LABELS, cycleName, itemName, partnerName } from '../utils/itemCategories';
 import { formatStockWarning } from '../utils/stockWarnings';
 import { compatibleUnits, convert } from '../utils/units';
+import { formatNumber } from '../utils/format';
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm';
 const PURPOSES = [['sale', 'ส่งขาย'], ['order', 'ส่งตามออเดอร์'], ['other', 'อื่น ๆ']];
@@ -19,7 +20,6 @@ const emptyForm = (purpose) => ({
   purpose, order_id: '', doc_date: getLocalDateString(), partner_id: '', crop_cycle_id: '',
   reference_no: '', note: '', record_other: false, lines: [emptyLine()],
 });
-const money = (value) => value.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round = (value) => Number(value.toFixed(3));
 
 /** Receive stock, or send it out as a sale, an order delivery or something else. */
@@ -174,7 +174,7 @@ function StockDocumentForm({ docType, initialPurpose = 'sale', initialOrderId = 
     if (!isInbound && form.purpose === 'other') {
       recordFinance = form.record_other;
     } else if (total > 0 || usesHiddenPrice) {
-      const detail = total > 0 && !usesHiddenPrice ? `ยอดรวม ${money(total)} บาท` : 'ยอดตามราคาที่ตกลงในออเดอร์';
+      const detail = total > 0 && !usesHiddenPrice ? `ยอดรวม ${formatNumber(total)} บาท` : 'ยอดตามราคาที่ตกลงในออเดอร์';
       const mode = await ask(isInbound ? 'inbound_finance' : 'outbound_finance', detail);
       if (!mode) return undefined;
       recordFinance = mode === 'auto';
@@ -339,7 +339,7 @@ function StockDocumentForm({ docType, initialPurpose = 'sale', initialOrderId = 
         {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p>}
         {data && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <span className="font-semibold text-slate-800">{usesHiddenPrice ? 'ยอดรวมตามราคาในออเดอร์' : `ยอดรวม ${money(total)} บาท`}</span>
+            <span className="font-semibold text-slate-800">{usesHiddenPrice ? 'ยอดรวมตามราคาในออเดอร์' : `ยอดรวม ${formatNumber(total)} บาท`}</span>
             <button disabled={isSaving} className="rounded-xl bg-farm-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{isSaving ? 'กำลังบันทึก…' : isInbound ? 'บันทึกและรับเข้าคลัง' : 'บันทึกและตัดสต็อก'}</button>
           </div>
         )}

@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { formatThaiDate, getLocalDateString, getRelativeDayLabel } from '../utils/dateUtils';
 import PlantingPrompt from './PlantingPrompt';
 import ThaiDateInput from './ThaiDateInput';
+import { MASKED_TEXT } from '../utils/masking';
 
 export default function TaskWidget({ onToast }) {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function TaskWidget({ onToast }) {
         body: JSON.stringify({ status: 'done' }),
       });
       if (updated.planting_ready) setPlantingLineId(updated.order_line_id);
-      if (onToast) onToast(`เสร็จสิ้นงาน: "${task.is_masked ? 'ข้อมูลเข้ารหัส' : task.title}"`);
+      if (onToast) onToast(`เสร็จสิ้นงาน: "${task.is_masked ? MASKED_TEXT : task.title}"`);
     } catch (err) {
       if (onToast) onToast(err.message);
       await loadTasks();
@@ -190,7 +191,7 @@ export default function TaskWidget({ onToast }) {
                   </button>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-800">{task.is_masked ? 'ข้อมูลเข้ารหัส' : task.title}</p>
+                      <p className="text-sm font-semibold text-slate-800">{task.is_masked ? MASKED_TEXT : task.title}</p>
                       {task.cycle_info && (
                         <span className="rounded bg-emerald-100/80 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
                           รอบ {task.cycle_info.cycle_code}

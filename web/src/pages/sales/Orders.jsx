@@ -10,6 +10,8 @@ import { api, getRole } from '../../lib/api';
 import { fetchAll } from '../../lib/lookups';
 import { formatThaiDate } from '../../utils/dateUtils';
 import { CATEGORY_LABELS, itemName, partnerName } from '../../utils/itemCategories';
+import { formatNumber } from '../../utils/format';
+import { MASKED_NUMBER, MASKED_TEXT } from '../../utils/masking';
 
 const PAGE_LIMIT = 20;
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm';
@@ -212,7 +214,7 @@ function Orders() {
         <article key={order.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
           <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-semibold text-slate-800">{order.order_no} · {order.is_masked ? 'ข้อมูลเข้ารหัส' : order.customer_name}</h2>
+              <h2 className="font-semibold text-slate-800">{order.order_no} · {order.is_masked ? MASKED_TEXT : order.customer_name}</h2>
               <p className="text-xs text-slate-500">
                 สั่ง {formatThaiDate(order.order_date)} · {statusLabels[order.status]}
                 {order.safety_days > 0 && ` · เผื่อ ${order.safety_days} วัน`}
@@ -242,7 +244,7 @@ function Orders() {
                     <tr key={line.id} className="border-t border-slate-100">
                       <td className="px-4 py-3 font-medium text-slate-800">{order.is_masked ? (line.crop_name || 'สินค้า (ปิดบัง)') : line.product_name}</td>
                       <td className="whitespace-nowrap px-4 py-3">{line.quantity} {line.unit}{line.delivered_quantity > 0 && <span className="block text-xs text-slate-500">ส่งแล้ว {line.delivered_quantity}</span>}</td>
-                      <td className="whitespace-nowrap px-4 py-3">{!line.has_price ? '-' : order.is_masked ? '••••••' : `${Number(line.unit_price).toLocaleString('th-TH')}/${line.unit}`}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{!line.has_price ? '-' : order.is_masked ? MASKED_NUMBER : `${formatNumber(line.unit_price)}/${line.unit}`}</td>
                       <td className="whitespace-nowrap px-4 py-3">{formatThaiDate(line.delivery_date)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs">คลัง {line.from_stock}<span className="block">กำลังปลูก {line.from_growing}</span></td>
                       <td className="whitespace-nowrap px-4 py-3">{line.crop_name ? line.to_plant : '-'}</td>

@@ -3,6 +3,7 @@ import { ArrowUpDown, Calendar, Filter, Package } from 'lucide-react';
 import ThaiDateInput from '../../components/ThaiDateInput';
 import { api } from '../../lib/api';
 import { formatThaiDate, formatThaiDateTime, getLocalDateString } from '../../utils/dateUtils';
+import { formatQuantity } from '../../utils/format';
 
 const BALANCES_LIMIT = 200;
 const MOVEMENTS_LIMIT = 50;
@@ -29,12 +30,6 @@ const SOURCE_TYPE_LABELS = {
   input_application: 'ใช้ปุ๋ย/ยา',
   stock_waste: 'ของเสีย',
 };
-
-function formatNumber(value) {
-  const num = Number(value ?? 0);
-  if (Number.isNaN(num)) return '-';
-  return num.toLocaleString('th-TH', { maximumFractionDigits: 3 });
-}
 
 function formatSource(item) {
   if (!item.source_type) return '-';
@@ -244,7 +239,7 @@ function Stock() {
               </span>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              ทั้งหมด {formatNumber(balancesTotal)} รายการ
+              ทั้งหมด {formatQuantity(balancesTotal)} รายการ
             </span>
           </div>
 
@@ -361,7 +356,7 @@ function Stock() {
                               isNegative ? 'text-red-600' : 'text-slate-800'
                             }`}
                           >
-                            {formatNumber(item.quantity)}
+                            {formatQuantity(item.quantity)}
                           </td>
                           <td className="px-4 py-3">
                             {isNegative ? (
@@ -423,7 +418,7 @@ function Stock() {
               <h2 className="text-lg font-semibold text-slate-800">ประวัติการเคลื่อนไหว</h2>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              ทั้งหมด {formatNumber(movementsTotal)} รายการ
+              ทั้งหมด {formatQuantity(movementsTotal)} รายการ
             </span>
           </div>
 
@@ -612,7 +607,7 @@ function Stock() {
                           </td>
 
                           <td className={`whitespace-nowrap px-4 py-3 text-right tabular-nums font-semibold ${deltaColorClass}`}>
-                            {isPositive ? `+${formatNumber(delta)}` : formatNumber(delta)}
+                            {isPositive ? `+${formatQuantity(delta)}` : formatQuantity(delta)}
                           </td>
 
                           <td className="whitespace-nowrap px-4 py-3">

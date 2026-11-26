@@ -16,64 +16,11 @@ import Toast from '../../components/Toast';
 import { formatStockWarning } from '../../utils/stockWarnings';
 import { api, getRole } from '../../lib/api';
 import { formatThaiDate, formatThaiDateTime } from '../../utils/dateUtils';
+import MaskedText from '../../components/MaskedText';
+import { formatNumber, formatQuantity } from '../../utils/format';
+import { MASKED_NUMBER, readAmount } from '../../utils/masking';
 
 const PAGE_LIMIT = 50;
-
-function formatNumber(value, decimals = 2) {
-  if (value === null || value === undefined || value === '') return '-';
-  const num = Number(value);
-  if (Number.isNaN(num)) return String(value);
-  return num.toLocaleString('th-TH', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
-function formatQuantity(value) {
-  if (value === null || value === undefined || value === '') return '-';
-  const num = Number(value);
-  if (Number.isNaN(num)) return String(value);
-  return num.toLocaleString('th-TH', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
-  });
-}
-
-function getTotalAmountMeta(doc) {
-  if (doc.total_amount === null || doc.total_amount === undefined) {
-    return { value: null, isMasked: Boolean(doc.is_masked) };
-  }
-  if (typeof doc.total_amount === 'object') {
-    return {
-      value: doc.total_amount.value ?? null,
-      isMasked: Boolean(doc.total_amount.is_masked ?? doc.is_masked),
-    };
-  }
-  return { value: doc.total_amount, isMasked: Boolean(doc.is_masked) };
-}
-
-function MaskedText({ value, isMasked, fallback = '-', className = '', strikethrough = false }) {
-  if (value === null || value === undefined || value === '') {
-    return <span className={className}>{fallback}</span>;
-  }
-  const text = String(value);
-  if (!isMasked) {
-    return (
-      <span className={`${strikethrough ? 'line-through' : ''} ${className}`}>
-        {text}
-      </span>
-    );
-  }
-  const shortened = text.length > 20 ? `${text.slice(0, 20)}…` : text;
-  return (
-    <span
-      title={text}
-      className={`inline-flex max-w-[14rem] items-center truncate rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-400 select-none ${strikethrough ? 'line-through' : ''} ${className}`}
-    >
-      {shortened}
-    </span>
-  );
-}
 
 const PURPOSE_LABELS = { sale: 'ส่งขาย', order: 'ส่งตามออเดอร์', other: 'ส่งออกอื่น ๆ' };
 
@@ -327,7 +274,7 @@ function TradeDocuments({ salesOnly = false }) {
             ))}
           </div>
 
-          <span className="text-xs text-slate-500">ทั้งหมด {total.toLocaleString('th-TH')} รายการ</span>
+          <span className="text-xs text-slate-500">ทั้งหมด {formatQuantity(total)} รายการ</span>
         </div>
 
         <div className="grid gap-3 md:grid-cols-4">
@@ -406,7 +353,7 @@ function TradeDocuments({ salesOnly = false }) {
                   const isExpanded = Boolean(expandedIds[doc.id]);
                   const isVoid = doc.status === 'void';
                   const isInbound = doc.doc_type === 'inbound';
-                  const totalMeta = getTotalAmountMeta(doc);
+                  const totalMeta = readAmount(doc.total_amount, doc);
 
                   return (
                     <Fragment key={doc.id}>
@@ -450,7 +397,7 @@ function TradeDocuments({ salesOnly = false }) {
                           {getPartnerDisplay(doc)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
-                          {totalMeta.value === null ? '-' : totalMeta.isMasked ? '••••••' : formatNumber(totalMeta.value)}
+                          {totalMeta.value === null ? '-' : totalMeta.isMasked ? MASKED_NUMBER : formatNumber(totalMeta.value)}
                           {totalMeta.value !== null && !isVoid && (
                             <div className={`text-xs ${doc.finance_recorded ? 'text-emerald-700' : 'text-amber-700'}`}>
                               {doc.finance_recorded ? 'ลงบัญชีแล้ว' : 'ยังไม่ลงบัญชี'}

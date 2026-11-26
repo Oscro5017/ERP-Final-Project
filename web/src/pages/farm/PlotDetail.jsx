@@ -11,6 +11,7 @@ import { api } from '../../lib/api';
 import { fetchAll } from '../../lib/lookups';
 import { itemName } from '../../utils/itemCategories';
 import { formatThaiDate, formatThaiDateTime } from '../../utils/dateUtils';
+import { MASKED_TEXT } from '../../utils/masking';
 
 // Stock source of a mixed item: '' keeps the mapping remembered for its name.
 const stockChoice = (item) => {
@@ -586,8 +587,8 @@ function PlotDetail() {
                         <tbody className="divide-y divide-slate-100">
                           {application.items && application.items.map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50/50">
-                              <td className="px-3 py-2 font-medium text-slate-800">{item.is_masked ? 'ข้อมูลเข้ารหัส' : item.item_name}</td>
-                              <td className="px-3 py-2 text-slate-600">{item.is_masked ? 'ข้อมูลเข้ารหัส' : item.quantity}</td>
+                              <td className="px-3 py-2 font-medium text-slate-800">{item.is_masked ? MASKED_TEXT : item.item_name}</td>
+                              <td className="px-3 py-2 text-slate-600">{item.is_masked ? MASKED_TEXT : item.quantity}</td>
                               <td className="px-3 py-2 text-slate-600">{item.unit || '-'}</td>
                             </tr>
                           ))}
