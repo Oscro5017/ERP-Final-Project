@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search, Plus, Pencil, Trash2, Package, Scale } from 'lucide-react';
-import { api, getRole } from '../lib/api';
-import Modal from '../components/Modal';
-import Toast from '../components/Toast';
-import { CATEGORIES, CATEGORY_LABELS, itemName } from '../utils/itemCategories';
+import { api, getRole } from '../../lib/api';
+import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
+import { CATEGORIES, CATEGORY_LABELS, itemName } from '../../utils/itemCategories';
 
 const PAGE_LIMIT = 50;
 

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, CloudRain, Droplets, RefreshCw, RotateCcw, Thermometer } from 'lucide-react';
-import WeatherWidget from '../components/WeatherWidget';
-import ThaiDateInput from '../components/ThaiDateInput';
-import Toast from '../components/Toast';
-import { api } from '../lib/api';
-import { formatThaiDate } from '../utils/dateUtils';
+import WeatherWidget from '../../components/WeatherWidget';
+import ThaiDateInput from '../../components/ThaiDateInput';
+import Toast from '../../components/Toast';
+import { api } from '../../lib/api';
+import { formatThaiDate } from '../../utils/dateUtils';
 
 function Weather() {
   const [fromDate, setFromDate] = useState('');

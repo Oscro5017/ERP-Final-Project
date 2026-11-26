@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import SectionTabs from '../components/SectionTabs';
+import SectionTabs from '../../components/SectionTabs';
 import Orders from './Orders';
-import TradeDocuments from './TradeDocuments';
+import TradeDocuments from '../warehouse/TradeDocuments';
 
 const tabs = [
   ['/sales/orders', 'ออเดอร์'],

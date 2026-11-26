@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Pencil, Plus, Search, Trash2, Truck } from 'lucide-react';
-import Modal from '../components/Modal';
-import Toast from '../components/Toast';
-import { api, getRole } from '../lib/api';
+import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
+import { api, getRole } from '../../lib/api';
 
 const PAGE_LIMIT = 50;
 

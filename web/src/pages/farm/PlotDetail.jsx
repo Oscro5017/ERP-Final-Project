@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Plus, Sprout, Trash2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import AutocompleteInput from '../components/AutocompleteInput';
-import { useAutomation } from '../components/AutomationPrompt';
-import Modal from '../components/Modal';
-import StatusBadge from '../components/StatusBadge';
-import ThaiDateInput from '../components/ThaiDateInput';
-import { cropCycleStatusLabels } from '../constants/cropCycleStatus';
-import { api } from '../lib/api';
-import { fetchAll } from '../lib/lookups';
-import { itemName } from '../utils/itemCategories';
-import { formatThaiDate, formatThaiDateTime } from '../utils/dateUtils';
+import AutocompleteInput from '../../components/AutocompleteInput';
+import { useAutomation } from '../../components/AutomationPrompt';
+import Modal from '../../components/Modal';
+import StatusBadge from '../../components/StatusBadge';
+import ThaiDateInput from '../../components/ThaiDateInput';
+import { cropCycleStatusLabels } from '../../constants/cropCycleStatus';
+import { api } from '../../lib/api';
+import { fetchAll } from '../../lib/lookups';
+import { itemName } from '../../utils/itemCategories';
+import { formatThaiDate, formatThaiDateTime } from '../../utils/dateUtils';
 
 // Stock source of a mixed item: '' keeps the mapping remembered for its name.
 const stockChoice = (item) => {

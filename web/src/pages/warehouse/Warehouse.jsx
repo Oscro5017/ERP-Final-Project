@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import SectionTabs from '../components/SectionTabs';
+import SectionTabs from '../../components/SectionTabs';
 import FreshStock from './FreshStock';
 import Products from './Products';
 import Stock from './Stock';
