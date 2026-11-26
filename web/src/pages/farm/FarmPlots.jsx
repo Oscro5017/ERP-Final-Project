@@ -10,6 +10,7 @@ import { cropCycleStatuses, cropCycleStatusLabels } from '../../constants/cropCy
 import { api } from '../../lib/api';
 import { formatThaiDate, getNextTuesday } from '../../utils/dateUtils';
 import ThaiDateInput from '../../components/ThaiDateInput';
+import { useDialog } from '../../components/DialogProvider';
 
 const emptyForm = {
   table_id: '',
@@ -21,6 +22,7 @@ const emptyForm = {
 };
 
 function FarmPlots() {
+  const { confirm } = useDialog();
   const navigate = useNavigate();
   const { ask } = useAutomation();
   const [searchParams] = useSearchParams();
@@ -124,7 +126,7 @@ function FarmPlots() {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`ต้องการลบโต๊ะ ${row.table_number} หรือไม่`)) return;
+    if (!await confirm(`ต้องการลบโต๊ะ ${row.table_number} หรือไม่`)) return;
     try {
       await api(`/crop-cycles/${row.id}`, { method: 'DELETE' });
       setPlots((previous) => previous.filter((plot) => plot.id !== row.id));

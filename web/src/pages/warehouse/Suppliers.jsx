@@ -3,6 +3,8 @@ import { AlertTriangle, Pencil, Plus, Search, Trash2, Truck } from 'lucide-react
 import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
 import { api, getRole } from '../../lib/api';
+import { useDialog } from '../../components/DialogProvider';
+import { partnerName } from '../../utils/itemCategories';
 
 const PAGE_LIMIT = 50;
 
@@ -15,6 +17,7 @@ const emptyForm = {
 };
 
 function Suppliers() {
+  const { confirm } = useDialog();
   const [suppliers, setSuppliers] = useState([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
@@ -160,8 +163,8 @@ function Suppliers() {
   };
 
   const handleDelete = async (supplier) => {
-    const displayName = supplier.is_masked ? `#${supplier.id}` : supplier.name;
-    if (!window.confirm(`ต้องการลบซัพพลายเออร์ "${displayName}" ใช่หรือไม่?`)) return;
+    const displayName = partnerName(supplier, 'ซัพพลายเออร์');
+    if (!await confirm(`ต้องการลบซัพพลายเออร์ "${displayName}" ใช่หรือไม่?`)) return;
 
     try {
       await api(`/suppliers/${supplier.id}`, { method: 'DELETE' });

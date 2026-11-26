@@ -12,6 +12,7 @@ import { fetchAll } from '../../lib/lookups';
 import { itemName } from '../../utils/itemCategories';
 import { formatThaiDate, formatThaiDateTime } from '../../utils/dateUtils';
 import { MASKED_TEXT } from '../../utils/masking';
+import { useDialog } from '../../components/DialogProvider';
 
 // Stock source of a mixed item: '' keeps the mapping remembered for its name.
 const stockChoice = (item) => {
@@ -30,6 +31,7 @@ function StockSelect({ value, products, onChange }) {
 }
 
 function PlotDetail() {
+  const { confirm, alert } = useDialog();
   const { ask } = useAutomation();
   const [stockItems, setStockItems] = useState([]);
   const { id } = useParams();
@@ -207,7 +209,7 @@ function PlotDetail() {
   };
 
   const handleDeleteApplication = async (appId) => {
-    if (!window.confirm('คุณต้องการลบรายการบันทึกปุ๋ย/ยานี้ใช่หรือไม่?')) {
+    if (!await confirm('คุณต้องการลบรายการบันทึกปุ๋ย/ยานี้ใช่หรือไม่?')) {
       return;
     }
 
@@ -215,7 +217,7 @@ function PlotDetail() {
       await api(`/input-applications/${appId}`, { method: 'DELETE' });
       setInputApplications((current) => current.filter((app) => app.id !== appId));
     } catch (deleteError) {
-      alert(`ลบรายการไม่สำเร็จ: ${deleteError.message}`);
+      await alert(`ลบรายการไม่สำเร็จ: ${deleteError.message}`);
     }
   };
 

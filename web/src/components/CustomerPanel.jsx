@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Copy, Plus, Trash2, Users } from 'lucide-react';
 import { api, getRole } from '../lib/api';
+import { useDialog } from './DialogProvider';
 
 function CustomerPanel() {
+  const { confirm } = useDialog();
   const [customers, setCustomers] = useState([]);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -74,7 +76,7 @@ function CustomerPanel() {
   };
 
   const handleDelete = async (customer) => {
-    if (!window.confirm('ลบข้อมูลลูกค้าที่เลือกใช่หรือไม่')) return;
+    if (!await confirm('ลบข้อมูลลูกค้าที่เลือกใช่หรือไม่')) return;
     try {
       await api(`/customers/${customer.id}`, { method: 'DELETE' });
       setCustomers((current) => current.filter((item) => item.id !== customer.id));

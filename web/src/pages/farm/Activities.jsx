@@ -5,10 +5,12 @@ import { formatThaiDate, getLocalDateString, getRelativeDayLabel } from '../../u
 import PlantingPrompt from '../../components/PlantingPrompt';
 import ThaiDateInput from '../../components/ThaiDateInput';
 import { MASKED_TEXT } from '../../utils/masking';
+import { useDialog } from '../../components/DialogProvider';
 
 const emptyForm = () => ({ title: '', due_date: getLocalDateString(), cycle_id: '' });
 
 function Activities() {
+  const { confirm } = useDialog();
   const [tasks, setTasks] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -101,7 +103,7 @@ function Activities() {
   };
 
   const deleteTask = async (task) => {
-    if (!window.confirm(`ลบงาน “${task.is_masked ? MASKED_TEXT : task.title}” ใช่หรือไม่`)) return;
+    if (!await confirm(`ลบงาน “${task.is_masked ? MASKED_TEXT : task.title}” ใช่หรือไม่`)) return;
     try {
       await api(`/tasks/${task.id}`, { method: 'DELETE' });
       setTasks((current) => current.filter((item) => item.id !== task.id));

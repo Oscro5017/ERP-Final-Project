@@ -12,6 +12,7 @@ import { formatThaiDate } from '../../utils/dateUtils';
 import { CATEGORY_LABELS, itemName, partnerName } from '../../utils/itemCategories';
 import { formatNumber } from '../../utils/format';
 import { MASKED_NUMBER, MASKED_TEXT } from '../../utils/masking';
+import { useDialog } from '../../components/DialogProvider';
 
 const PAGE_LIMIT = 20;
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm';
@@ -32,6 +33,7 @@ const plantingLabels = {
 const statusLabels = { open: 'เปิดอยู่', delivered: 'ส่งแล้ว', cancelled: 'ยกเลิก' };
 
 function Orders() {
+  const { confirm } = useDialog();
   const isOwner = getRole() === 'owner';
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -166,7 +168,7 @@ function Orders() {
 
   const closeOrder = async (order, status) => {
     const question = status === 'delivered' ? 'ปิดออเดอร์โดยไม่ตัดสต็อก' : 'ยกเลิกออเดอร์';
-    if (!window.confirm(`${question} ${order.order_no}? กิจกรรมเพาะที่ยังค้างจะถูกลบ และเปิดกลับไม่ได้`)) return;
+    if (!await confirm(`${question} ${order.order_no}? กิจกรรมเพาะที่ยังค้างจะถูกลบ และเปิดกลับไม่ได้`)) return;
     try {
       await api(`/sales-orders/${order.id}/close`, { method: 'POST', body: JSON.stringify({ status }) });
       setMessage(`${question}แล้ว`);

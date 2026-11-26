@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
 import { CATEGORIES, CATEGORY_LABELS, itemName } from '../../utils/itemCategories';
 import { formatQuantity } from '../../utils/format';
+import { useDialog } from '../../components/DialogProvider';
 
 const PAGE_LIMIT = 50;
 
@@ -34,6 +35,7 @@ function getStockStatus(item) {
 }
 
 function Products() {
+  const { confirm } = useDialog();
   const role = getRole();
   const isOwner = role === 'owner';
 
@@ -213,7 +215,7 @@ function Products() {
 
   const handleDeleteProduct = async (product) => {
     const displayName = itemName(product);
-    if (!window.confirm(`ต้องการลบรายการ "${displayName}" ใช่หรือไม่?`)) {
+    if (!await confirm(`ต้องการลบรายการ "${displayName}" ใช่หรือไม่?`)) {
       return;
     }
     try {

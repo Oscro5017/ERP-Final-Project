@@ -6,6 +6,7 @@ import { api, getRole } from '../../lib/api';
 import { fetchAll } from '../../lib/lookups';
 import { cycleName } from '../../utils/itemCategories';
 import { formatThaiDate, formatThaiDateTime } from '../../utils/dateUtils';
+import { useDialog } from '../../components/DialogProvider';
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm';
 const statusLabels = {
@@ -17,6 +18,7 @@ const statusLabels = {
 const reasonLabels = { expired: 'หมดอายุ', spoiled: 'เน่าเสีย', damaged: 'เสียหาย/ช้ำ', pest: 'โรคหรือแมลง', other: 'อื่น ๆ' };
 
 function FreshStock() {
+  const { confirm } = useDialog();
   const isOwner = getRole() === 'owner';
   const [data, setData] = useState(null);
   const [waste, setWaste] = useState([]);
@@ -93,7 +95,7 @@ function FreshStock() {
   };
 
   const voidWaste = async (row) => {
-    if (!window.confirm('ยกเลิกรายการของเสียนี้ และคืนจำนวนเข้าสต็อก?')) return;
+    if (!await confirm('ยกเลิกรายการของเสียนี้ และคืนจำนวนเข้าสต็อก?')) return;
     try {
       await api(`/freshness/waste/${row.id}/void`, { method: 'POST' });
       setMessage('ยกเลิกรายการของเสียแล้ว');

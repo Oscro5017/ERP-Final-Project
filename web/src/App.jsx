@@ -15,6 +15,7 @@ import Suppliers from './pages/warehouse/Suppliers';
 import Insights from './pages/finance/Insights';
 import CustomerPanel from './components/CustomerPanel';
 import { AutomationProvider } from './components/AutomationPrompt';
+import { DialogProvider } from './components/DialogProvider';
 import { clearToken, getToken } from './lib/api';
 
 function NotFound() {
@@ -42,6 +43,7 @@ function App() {
   };
 
   return (
+    <DialogProvider>
     <AutomationProvider>
     <DashboardLayout onLogout={handleLogout}>
       <Routes>
@@ -67,6 +69,7 @@ function App() {
       </Routes>
     </DashboardLayout>
     </AutomationProvider>
+    </DialogProvider>
   );
 }
 
