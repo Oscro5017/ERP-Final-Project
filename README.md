@@ -69,7 +69,13 @@ pages are missing.
 cd backend
 ../.venv/Scripts/python -m pytest -q      # Windows
 # ../.venv/bin/python -m pytest -q        # macOS/Linux
+
+cd ../web
+npm test                                  # Vitest: forms, units, formatting
 ```
+
+When you add a backend router, also add its first path segment to
+`apiPrefixes` in `web/vite.config.js`; a backend test fails until you do.
 
 ## Raspberry Pi deployment
 

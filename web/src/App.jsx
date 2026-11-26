@@ -1,22 +1,24 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Weather from './pages/farm/Weather';
-import FarmPlots from './pages/farm/FarmPlots';
-import PlotDetail from './pages/farm/PlotDetail';
-import Activities from './pages/farm/Activities';
-import Warehouse from './pages/warehouse/Warehouse';
-import Sales from './pages/sales/Sales';
-import Settings from './pages/Settings';
-import Finance from './pages/finance/Finance';
-import Suppliers from './pages/warehouse/Suppliers';
-import Insights from './pages/finance/Insights';
-import CustomerPanel from './components/CustomerPanel';
 import { AutomationProvider } from './components/AutomationPrompt';
 import { DialogProvider } from './components/DialogProvider';
 import { clearToken, getToken } from './lib/api';
+
+// Each page loads when it is first opened, so the first screen downloads less.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Weather = lazy(() => import('./pages/farm/Weather'));
+const FarmPlots = lazy(() => import('./pages/farm/FarmPlots'));
+const PlotDetail = lazy(() => import('./pages/farm/PlotDetail'));
+const Activities = lazy(() => import('./pages/farm/Activities'));
+const Warehouse = lazy(() => import('./pages/warehouse/Warehouse'));
+const Sales = lazy(() => import('./pages/sales/Sales'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Finance = lazy(() => import('./pages/finance/Finance'));
+const Suppliers = lazy(() => import('./pages/warehouse/Suppliers'));
+const Insights = lazy(() => import('./pages/finance/Insights'));
+const CustomerPanel = lazy(() => import('./components/CustomerPanel'));
 
 function NotFound() {
   return (
@@ -46,6 +48,7 @@ function App() {
     <DialogProvider>
     <AutomationProvider>
     <DashboardLayout onLogout={handleLogout}>
+      <Suspense fallback={<p className="py-16 text-center text-sm text-slate-500">กำลังโหลด…</p>}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/weather" element={<Weather />} />
@@ -67,6 +70,7 @@ function App() {
         <Route path="/insights" element={<Insights />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </DashboardLayout>
     </AutomationProvider>
     </DialogProvider>
