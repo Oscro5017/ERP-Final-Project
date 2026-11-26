@@ -44,6 +44,9 @@ def list_insights(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    # An empty filter means "all", which is what the web page sends.
+    kind = kind or None
+    status = status or None
     if kind is not None and kind not in _KINDS:
         raise HTTPException(status_code=422, detail="Invalid insight kind")
     if status is not None and status not in _STATUSES:

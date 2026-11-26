@@ -114,6 +114,10 @@ def test_insight_list_filters_paginates_and_updates_status():
         assert page.status_code == 200 and page.json()["total"] == 2 and len(page.json()["items"]) == 1
         filtered = client.get("/insights?kind=alert&status=seen")
         assert filtered.json()["total"] == 1
+        # The web page sends empty filters for "all".
+        unfiltered = client.get("/insights?kind=&status=")
+        assert unfiltered.status_code == 200 and unfiltered.json()["total"] == 3
+        assert client.get("/insights?kind=nope").status_code == 422
         insight_id = filtered.json()["items"][0]["id"]
         updated = client.patch(f"/insights/{insight_id}/status", json={"status": "dismissed"})
         assert updated.status_code == 200 and updated.json()["status"] == "dismissed"
