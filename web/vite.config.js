@@ -33,6 +33,10 @@ const servePage = (request) => (request.headers.accept?.includes('text/html') ? 
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,
