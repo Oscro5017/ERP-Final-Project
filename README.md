@@ -63,6 +63,28 @@ To let the backend serve the pages itself on port 8000, build the web app once
 with `npm run build` in `web/`. Without a build the API still runs and only the
 pages are missing.
 
+## Demo data
+
+To see every page with realistic data (crop cycles at each stage, stock and
+fresh lots, purchases and sales, orders in every state, finance, insights and
+past weather), build a separate demo database. It never touches `erp.db`:
+
+```bash
+cd backend
+../.venv/Scripts/python -m scripts.seed_demo             # creates demo.db at the repository root
+../.venv/Scripts/python -m scripts.seed_demo --replace   # rebuild it with today's dates
+```
+
+Then start the backend on it from the repository root (PowerShell):
+
+```powershell
+$env:DATABASE_URL = 'sqlite:///./demo.db'; .\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --reload-dir backend --port 8000
+```
+
+Open a new terminal (or `Remove-Item Env:DATABASE_URL`) to go back to `erp.db`.
+The demo data is encrypted with the `ENCRYPTION_KEY` in `.env`, so keep the same
+`.env` when opening it.
+
 ## Tests
 
 ```bash
