@@ -7,10 +7,11 @@ from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
@@ -184,6 +185,21 @@ async def lifespan(_app: FastAPI):
         catchup_task.cancel()
 
 
+NON_PAGE_SECTIONS = {"assets", "docs", "redoc", "openapi.json"}
+
+
+def api_path_sections(api: FastAPI) -> set[str]:
+    """First path segment of every API endpoint, e.g. "stock" for /stock/movements."""
+    return {route.path.strip("/").split("/", 1)[0] for route in api.routes if isinstance(route, APIRoute) and route.include_in_schema} - {""}
+
+
+def is_page_request(method: str, path: str, accept: str) -> bool:
+    if method != "GET" or "text/html" not in accept:
+        return False
+    first, last = path.strip("/").split("/", 1)[0], path.rsplit("/", 1)[-1]
+    return first not in NON_PAGE_SECTIONS and "." not in last
+
+
 def create_app(settings=None) -> FastAPI:
     app_settings = settings or get_settings()
     configure_logging(app_settings)
@@ -239,15 +255,22 @@ def create_app(settings=None) -> FastAPI:
         logger.warning("Web app is not built; run `npm run build` in web/ to serve the pages.")
         return api
     index_page = frontend / "index.html"
+    api_sections = api_path_sections(api)
     api.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
+
+    @api.middleware("http")
+    async def serve_pages_to_browsers(request: Request, call_next):
+        # A browser opening or refreshing a page asks for HTML, even when the page path matches an API
+        # path such as /insights. API calls ask for JSON, so they still reach the endpoints.
+        if is_page_request(request.method, request.url.path, request.headers.get("accept", "")):
+            return FileResponse(index_page)
+        return await call_next(request)
 
     @api.get("/{path:path}", include_in_schema=False)
     def spa_fallback(path: str):
         if path.rstrip("/") == "weather":
             return FileResponse(index_page)
-        if path.startswith(("auth", "crop-cycles", "customers", "products", "tables", "batches", "crop-types", "tasks", "freshness", "preferences", "sales-orders", "weather", "sensors", "input-applications", "input-catalog")):
-            raise HTTPException(status_code=404, detail="Not Found")
-        if "." in path.rsplit("/", 1)[-1]:
+        if path.split("/", 1)[0] in api_sections or "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(status_code=404, detail="Not Found")
         return FileResponse(index_page)
 
