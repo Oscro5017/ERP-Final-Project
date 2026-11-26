@@ -1,8 +1,20 @@
 from functools import lru_cache
+from pathlib import Path
 
 from cryptography.fernet import Fernet
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Runtime files (.env, the SQLite database, logs, the built web app) live at the repository root,
+# so the backend reads the same files whether it is started from the root or from backend/.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SQLITE_PREFIX = "sqlite:///"
+
+
+def _from_root(value: str) -> str:
+    path = Path(value).expanduser()
+    return str(path if path.is_absolute() else PROJECT_ROOT / path)
 
 
 class Settings(BaseSettings):
@@ -21,6 +33,7 @@ class Settings(BaseSettings):
     trusted_proxy_ips: str = ""
     log_level: str = "INFO"
     log_dir: str = "logs"
+    frontend_dir: str = "web/dist"
     farm_latitude: float = 18.8072866
     farm_longitude: float = 99.0930437
     farm_timezone: str = "Asia/Bangkok"
@@ -31,7 +44,7 @@ class Settings(BaseSettings):
     weather_forecast_empty_cache_seconds: int = 30
     scheduler_misfire_grace_seconds: int = 21_600
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
     @field_validator("enable_docs", "device_token", "initial_owner_password", "initial_developer_password", "backup_dir", mode="before")
     @classmethod
@@ -39,6 +52,21 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @field_validator("database_url")
+    @classmethod
+    def sqlite_path_starts_at_project_root(cls, value: str) -> str:
+        if not value.startswith(SQLITE_PREFIX):
+            return value
+        path = value[len(SQLITE_PREFIX):]
+        if not path or path.startswith(":memory:") or Path(path).is_absolute():
+            return value
+        return SQLITE_PREFIX + Path(_from_root(path)).as_posix()
+
+    @field_validator("log_dir", "frontend_dir")
+    @classmethod
+    def directory_starts_at_project_root(cls, value: str) -> str:
+        return _from_root(value)
 
     @model_validator(mode="after")
     def validate_encryption_key(self):

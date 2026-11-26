@@ -28,10 +28,6 @@ const apiPrefixes = [
 
 export default defineConfig({
   plugins: [react()],
-  build: {
-    outDir: 'frontend',
-    emptyOutDir: true,
-  },
   server: {
     host: '0.0.0.0',
     port: 3000,

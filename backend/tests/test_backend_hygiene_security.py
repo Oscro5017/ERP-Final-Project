@@ -99,12 +99,14 @@ def test_api_docs_routes_follow_environment():
     assert {"/docs", "/redoc", "/openapi.json"} <= development_routes
 
 
-def test_weather_page_refresh_serves_spa_without_swallowing_api_404s():
+def test_weather_page_refresh_serves_spa_without_swallowing_api_404s(tmp_path):
     from fastapi.testclient import TestClient
 
     from app.main import create_app
 
-    settings = Settings(_env_file=None, encryption_key=TEST_FERNET_KEY)
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>ERP</title>", encoding="utf-8")
+    settings = Settings(_env_file=None, encryption_key=TEST_FERNET_KEY, frontend_dir=str(tmp_path))
     client = TestClient(create_app(settings))
 
     page_response = client.get("/weather")
@@ -117,6 +119,26 @@ def test_weather_page_refresh_serves_spa_without_swallowing_api_404s():
     assert "text/html" in page_response.headers["content-type"]
     assert unknown_api_response.status_code == 404
     assert api_route_response.status_code == 401
+
+
+def test_api_starts_before_the_web_app_is_built(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    settings = Settings(_env_file=None, encryption_key=TEST_FERNET_KEY, frontend_dir=str(tmp_path / "missing"))
+    client = TestClient(create_app(settings))
+    assert client.get("/weather").status_code == 404
+    assert client.get("/weather/history").status_code == 401
+
+
+def test_relative_runtime_paths_start_at_project_root():
+    from app.config import PROJECT_ROOT
+
+    settings = Settings(_env_file=None, encryption_key=TEST_FERNET_KEY, database_url="sqlite:///./erp.db", log_dir="logs")
+    assert settings.database_url == "sqlite:///" + (PROJECT_ROOT / "erp.db").as_posix()
+    assert settings.log_dir == str(PROJECT_ROOT / "logs")
+    assert Settings(_env_file=None, encryption_key=TEST_FERNET_KEY, database_url="sqlite://").database_url == "sqlite://"
 
 
 def test_login_failure_lockout_and_expiry(monkeypatch):

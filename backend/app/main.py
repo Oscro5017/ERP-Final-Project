@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -232,19 +233,25 @@ def create_app(settings=None) -> FastAPI:
     api.include_router(tasks.router)
     api.include_router(weather.router)
     api.include_router(sensors.router)
-    api.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
+    frontend = Path(app_settings.frontend_dir)
+    if not (frontend / "index.html").is_file():
+        # The API still works before the web app is built; only the pages are missing.
+        logger.warning("Web app is not built; run `npm run build` in web/ to serve the pages.")
+        return api
+    index_page = frontend / "index.html"
+    api.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
 
     @api.get("/{path:path}", include_in_schema=False)
     def spa_fallback(path: str):
         if path.rstrip("/") == "weather":
-            return FileResponse("frontend/index.html")
+            return FileResponse(index_page)
         if path.startswith(("auth", "crop-cycles", "customers", "products", "tables", "batches", "crop-types", "tasks", "freshness", "preferences", "sales-orders", "weather", "sensors", "input-applications", "input-catalog")):
             raise HTTPException(status_code=404, detail="Not Found")
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(status_code=404, detail="Not Found")
-        return FileResponse("frontend/index.html")
+        return FileResponse(index_page)
 
-    api.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+    api.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")
     return api
 
 
