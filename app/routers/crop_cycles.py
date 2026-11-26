@@ -7,8 +7,10 @@ from ..models import CropCycle, CropCycleStatusLog, CycleStatus, Task, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import CropCycleCreate, CropCycleResponse, CropCycleStatusLogResponse, CropCycleUpdate
 from ..security import get_current_user
+from ..services.crop_cycle_options import OPTION_FIELDS, save_cycle_options
 from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
 from ..services.crop_cycle_lifecycle import sync_crop_cycle_lifecycle
+from ..services.sales_orders import replan_open_orders
 from ..services.task_finance import void_task_finance
 
 router = APIRouter(prefix="/crop-cycles", tags=["crop cycles"])
@@ -26,11 +28,13 @@ def list_cycles(db: Session = Depends(get_db), _=Depends(get_current_user)):
 
 @router.post("", response_model=CropCycleResponse, status_code=201)
 def create_cycle(payload: CropCycleCreate, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    cycle = CropCycle(**payload.model_dump())
+    cycle = CropCycle(**payload.model_dump(exclude=OPTION_FIELDS))
     db.add(cycle)
     db.flush()
+    save_cycle_options(db, cycle.id, payload.model_dump(include=OPTION_FIELDS))
     sync_crop_cycle_lifecycle(db, cycle, created=True)
     warnings = sync_crop_cycle_harvest_stock(db, cycle)
+    replan_open_orders(db)
     db.commit()
     response = CropCycleResponse.model_validate(db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id))))
     response.warnings = warnings
@@ -43,11 +47,13 @@ def update_cycle(cycle_id: int, payload: CropCycleUpdate, db: Session = Depends(
     if not cycle:
         raise HTTPException(status_code=404, detail="Crop cycle not found")
     previous_status = cycle.status
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    for field, value in payload.model_dump(exclude_unset=True, exclude=OPTION_FIELDS).items():
         setattr(cycle, field, value)
     db.flush()
+    save_cycle_options(db, cycle.id, payload.model_dump(include=OPTION_FIELDS))
     sync_crop_cycle_lifecycle(db, cycle, previous_status=previous_status)
     warnings = sync_crop_cycle_harvest_stock(db, cycle)
+    replan_open_orders(db)
     db.commit()
     response = CropCycleResponse.model_validate(db.scalar(with_relations(select(CropCycle).where(CropCycle.id == cycle.id))))
     response.warnings = warnings
@@ -64,6 +70,7 @@ def delete_cycle(cycle_id: int, db: Session = Depends(get_db), _=Depends(get_cur
     for task in db.scalars(active_rows(select(Task).where(Task.cycle_id == cycle.id), Task)).all():
         task.deleted_at = cycle.deleted_at
         void_task_finance(db, task.id, "Crop cycle removed")
+    replan_open_orders(db)
     db.commit()
 
 

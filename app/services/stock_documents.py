@@ -10,14 +10,20 @@ from ..models import (
     CropCycle,
     Customer,
     Product,
+    SalesOrder,
+    SalesOrderDelivery,
+    SalesOrderLine,
     StockDocument,
     StockDocumentLine,
+    StockDocumentPurpose,
     StockMovement,
     STOCK_DOCUMENT_TYPES,
     Supplier,
     utc_now,
 )
 from ..schemas import InboundDocumentCreate, OutboundDocumentCreate
+from .finance_entries import document_finance_entry
+from .freshness import expired_lot_warnings
 from .products_stock import convert_quantity, on_hand_grouped, record_movement, void_source_movements
 from .secure_fields import (
     encrypt_number,
@@ -169,6 +175,8 @@ def create_stock_document(db: Session, doc_type: str, payload, created_by: int |
     )
     db.add(document)
     db.flush()
+    if getattr(payload, "purpose", None) is not None:
+        set_document_purpose(db, document.id, payload.purpose)
     movement_type = "receipt" if doc_type == "inbound" else "shipment"
     for line in lines:
         db.add(StockDocumentLine(
@@ -200,7 +208,55 @@ def create_stock_document(db: Session, doc_type: str, payload, created_by: int |
     if doc_type == "outbound":
         balances = on_hand_grouped(db, sorted({line["product"].id for line in lines if line["base_quantity"] is not None}))
         warnings.extend(f"negative_balance:{product_id}" for product_id, balance in balances.items() if balance < 0)
+        warnings.extend(expired_lot_warnings(db, document.id, sorted(balances)))
     return document, sorted(set(warnings))
+
+
+def set_document_purpose(db: Session, document_id: int, purpose: str, order_id: int | None = None) -> None:
+    db.add(StockDocumentPurpose(document_id=document_id, purpose=purpose, order_id=order_id))
+    db.flush()
+
+
+def document_purpose(db: Session, document: StockDocument) -> tuple[str | None, SalesOrder | None]:
+    """Purpose and order of an outbound document; None for documents issued before purposes existed."""
+    row = db.scalar(select(StockDocumentPurpose).where(StockDocumentPurpose.document_id == document.id))
+    if row is not None:
+        return row.purpose, db.get(SalesOrder, row.order_id) if row.order_id is not None else None
+    order = db.scalar(
+        select(SalesOrder)
+        .join(SalesOrderLine, SalesOrderLine.order_id == SalesOrder.id)
+        .join(SalesOrderDelivery, SalesOrderDelivery.line_id == SalesOrderLine.id)
+        .where(SalesOrderDelivery.document_id == document.id)
+        .limit(1)
+    )
+    return ("order", order) if order is not None else (None, None)
+
+
+def last_unit_prices(db: Session, doc_type: str) -> list[dict]:
+    """Most recent readable price of each product and unit."""
+    statement = (
+        select(StockDocumentLine)
+        .join(StockDocument, StockDocument.id == StockDocumentLine.document_id)
+        .outerjoin(StockDocumentPurpose, StockDocumentPurpose.document_id == StockDocument.id)
+        .where(
+            StockDocument.doc_type == doc_type,
+            StockDocument.status == "posted",
+            StockDocumentLine.unit_price_encrypted.is_not(None),
+            func.coalesce(StockDocumentPurpose.purpose, "sale") != "other",
+        )
+        .order_by(StockDocument.doc_date.desc(), StockDocument.id.desc(), StockDocumentLine.line_no.desc())
+    )
+    prices: dict[tuple[int, str], dict] = {}
+    for line in db.scalars(statement):
+        key = (line.product_id, line.unit)
+        if key in prices:
+            continue
+        price = safe_decrypt_number(
+            line.unit_price_encrypted, table="stock_document_lines", row_id=line.id, field="unit_price"
+        )
+        if not price.decrypt_failed:
+            prices[key] = {"product_id": line.product_id, "unit": line.unit, "unit_price": price.value}
+    return list(prices.values())
 
 
 def void_stock_document(db: Session, document: StockDocument, reason: str | None) -> None:
@@ -281,7 +337,15 @@ def present_stock_document(db: Session, document: StockDocument, role, warnings:
     if document.doc_type == "outbound" and document.status == "posted" and warnings is None:
         balances = on_hand_grouped(db, product_ids)
         warnings = [f"negative_balance:{product_id}" for product_id, balance in balances.items() if balance < 0]
+        warnings.extend(expired_lot_warnings(db, document.id, product_ids))
+    purpose, order = document_purpose(db, document) if document.doc_type == "outbound" else (None, None)
+    cycle = db.get(CropCycle, document.crop_cycle_id) if document.crop_cycle_id is not None else None
     return {
+        "crop_cycle_label": f"โต๊ะ {cycle.table.table_number} · {cycle.crop_type.name} · {cycle.cycle_code}" if cycle else None,
+        "purpose": purpose,
+        "order_id": order.id if order else None,
+        "order_no": order.order_no if order else None,
+        "finance_recorded": document_finance_entry(db, document.id) is not None,
         "id": document.id,
         "doc_no": document.doc_no,
         "doc_type": document.doc_type,

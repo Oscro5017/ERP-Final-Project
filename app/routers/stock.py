@@ -6,7 +6,15 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Product, STOCK_MOVEMENT_TYPES, StockMovement, User
+from ..models import (
+    CropCycle,
+    InputApplication,
+    Product,
+    STOCK_MOVEMENT_TYPES,
+    StockDocument,
+    StockMovement,
+    User,
+)
 from ..schemas import (
     ProductMovementResponse,
     StockBalanceListResponse,
@@ -15,6 +23,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.secure_fields import present_text_safe
+from ..services.source_types import CROP_CYCLE_HARVEST, INPUT_APPLICATION, STOCK_DOCUMENT
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 _BANGKOK = ZoneInfo("Asia/Bangkok")
@@ -25,7 +34,25 @@ def _utc_boundary(day: date, end_of_day: bool) -> datetime:
     return datetime.combine(day, local_time, tzinfo=_BANGKOK).astimezone(timezone.utc)
 
 
-def _present_movement(movement: StockMovement, user: User) -> ProductMovementResponse:
+def _as_utc(value: datetime) -> datetime:
+    # SQLite drops the timezone, and a naive time would be shown as local time.
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _source_label(db: Session, movement: StockMovement) -> str | None:
+    """Readable name of where a movement came from; none of it is encrypted data."""
+    cycle_id = movement.source_id if movement.source_type == CROP_CYCLE_HARVEST else None
+    if movement.source_type == STOCK_DOCUMENT:
+        document = db.get(StockDocument, movement.source_id)
+        return document.doc_no if document else None
+    if movement.source_type == INPUT_APPLICATION:
+        application = db.get(InputApplication, movement.source_id)
+        cycle_id = application.cycle_id if application else None
+    cycle = db.get(CropCycle, cycle_id) if cycle_id is not None else None
+    return f"โต๊ะ {cycle.table.table_number} · {cycle.cycle_code}" if cycle else None
+
+
+def _present_movement(db: Session, movement: StockMovement, user: User) -> ProductMovementResponse:
     note = present_text_safe(
         movement.note_encrypted,
         user.role,
@@ -40,7 +67,8 @@ def _present_movement(movement: StockMovement, user: User) -> ProductMovementRes
         movement_type=movement.movement_type,
         source_type=movement.source_type,
         source_id=movement.source_id,
-        occurred_at=movement.occurred_at,
+        source_label=_source_label(db, movement),
+        occurred_at=_as_utc(movement.occurred_at),
         note=note.value if movement.note_encrypted else None,
         voided=movement.voided_at is not None,
         created_at=movement.created_at,
@@ -132,4 +160,4 @@ def stock_movements(
         statement = statement.where(StockMovement.voided_at.is_(None))
     total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     rows = db.scalars(statement.order_by(StockMovement.occurred_at.desc(), StockMovement.id.desc()).offset(offset).limit(limit)).all()
-    return StockMovementListResponse(items=[_present_movement(row, user) for row in rows], total=total)
+    return StockMovementListResponse(items=[_present_movement(db, row, user) for row in rows], total=total)

@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import FinanceEntry, StockDocument, StockDocumentLine
+from ..models import FinanceEntry, StockDocument, StockDocumentLine, StockDocumentPurpose
 from .secure_fields import decrypt_number, encrypt_number, encrypt_text
 from .source_types import STOCK_DOCUMENT
 
@@ -21,13 +21,17 @@ def finance_today() -> date:
     return datetime.now(_BANGKOK).date()
 
 
-def create_auto_finance_for_document(db: Session, document: StockDocument, created_by: int | None = None) -> FinanceEntry | None:
-    existing = db.scalar(select(FinanceEntry).where(
+def document_finance_entry(db: Session, document_id: int) -> FinanceEntry | None:
+    return db.scalar(select(FinanceEntry).where(
         FinanceEntry.source_type == STOCK_DOCUMENT,
-        FinanceEntry.source_id == document.id,
+        FinanceEntry.source_id == document_id,
         FinanceEntry.is_auto.is_(True),
         FinanceEntry.status == "posted",
     ))
+
+
+def create_auto_finance_for_document(db: Session, document: StockDocument, created_by: int | None = None) -> FinanceEntry | None:
+    existing = document_finance_entry(db, document.id)
     if existing is not None:
         return existing
     lines = db.scalars(select(StockDocumentLine).where(
@@ -41,10 +45,12 @@ def create_auto_finance_for_document(db: Session, document: StockDocument, creat
     if amount <= 0:
         return None
     is_outbound = document.doc_type == "outbound"
+    purpose = db.scalar(select(StockDocumentPurpose.purpose).where(StockDocumentPurpose.document_id == document.id))
+    sale_category = "other" if purpose == "other" else "sale"
     entry = FinanceEntry(
         entry_date=document.doc_date,
         direction="income" if is_outbound else "expense",
-        category="sale" if is_outbound else "purchase",
+        category=sale_category if is_outbound else "purchase",
         amount_encrypted=encrypt_number(amount).encode("ascii"),
         description_encrypted=None,
         source_type=STOCK_DOCUMENT,

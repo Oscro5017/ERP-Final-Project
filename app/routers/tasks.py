@@ -9,12 +9,13 @@ from ..query_helpers import active_rows, get_active
 from ..schemas import TaskCreate, TaskCycleInfo, TaskResponse, TaskUpdate
 from ..security import get_current_user
 from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe, safe_decrypt_text
+from ..services.sales_orders import planting_flags_for_tasks
 from ..services.task_finance import sync_task_finance, void_task_finance
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def build_task_response(task: Task, role: Role) -> TaskResponse:
+def build_task_response(task: Task, role: Role, planting: tuple[int, bool] | None = None) -> TaskResponse:
     cycle_info = None
     if task.cycle:
         table_num = task.cycle.table.table_number if task.cycle.table else None
@@ -49,6 +50,8 @@ def build_task_response(task: Task, role: Role) -> TaskResponse:
         extra_cost=extra_result.value,
         created_at=task.created_at,
         cycle_info=cycle_info,
+        order_line_id=planting[0] if planting else None,
+        planting_ready=planting[1] if planting else False,
         is_masked=(task.is_encrypted or task.labor_cost_encrypted is not None or task.extra_cost_encrypted is not None) and role != Role.owner,
         decrypt_failed=title_result.decrypt_failed or labor_result.decrypt_failed or extra_result.decrypt_failed,
     )
@@ -85,7 +88,8 @@ def list_tasks(
         query = query.where(Task.due_date <= to_date)
 
     tasks = db.scalars(query).unique().all()
-    responses = [build_task_response(task, user.role) for task in tasks]
+    planting = planting_flags_for_tasks(db, [task.id for task in tasks])
+    responses = [build_task_response(task, user.role, planting.get(task.id)) for task in tasks]
     if q:
         normalized_query = q.casefold().strip()
         responses = [
@@ -210,7 +214,8 @@ def update_task(
         .unique()
         .first()
     )
-    return build_task_response(task_with_relations or task, user.role)
+    planting = planting_flags_for_tasks(db, [task.id]).get(task.id)
+    return build_task_response(task_with_relations or task, user.role, planting)
 
 
 @router.delete("/{task_id}", status_code=204)

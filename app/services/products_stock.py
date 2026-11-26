@@ -6,7 +6,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..models import Product, StockMovement, Task, STOCK_MOVEMENT_TYPES, utc_now
-from .secure_fields import encrypt_text
+from .secure_fields import encrypt_text, safe_decrypt_text
 
 _Q = Decimal("0.001")
 _BANGKOK = ZoneInfo("Asia/Bangkok")
@@ -109,8 +109,9 @@ def sync_product_low_stock_reminder(db: Session, product: Product) -> None:
     if balance <= product.reorder_point:
         if alerts:
             return
+        name = safe_decrypt_text(product.name_encrypted, table="products", row_id=product.id, field="name")
         db.add(Task(
-            title=encrypt_text(f"Low stock alert for product #{product.id}"),
+            title=encrypt_text(f"ของใกล้หมด: {name.value}" if not name.decrypt_failed else f"ของใกล้หมด #{product.id}"),
             due_date=datetime.now(_BANGKOK).date(),
             status="pending",
             source="auto",

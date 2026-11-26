@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..models import CropCycle, CropType, CycleStatus, Table, Task
 from ..query_helpers import active_rows
+from .crop_cycle_options import cycle_option
 
 
 def sync_crop_cycle_tasks(db: Session, cycle: CropCycle) -> None:
@@ -90,6 +91,9 @@ def _upsert_stage_task(db: Session, cycle_id: int, prefix: str, title: str, due_
     )
     if done_task:
         # Do not recreate completed task
+        return
+
+    if not cycle_option(db, cycle_id, "create_tasks"):
         return
 
     # Create new auto task

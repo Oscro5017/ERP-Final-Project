@@ -7,6 +7,7 @@ from ..models import Batch, CropCycle, CropType, Product, Table
 from ..schemas import BatchResponse, CropTypeProductMappingUpdate, CropTypeResponse, TableResponse
 from ..security import get_current_user
 from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
+from ..services.sales_orders import replan_open_orders
 
 router = APIRouter(tags=["reference"])
 
@@ -55,6 +56,7 @@ def update_crop_type_product_mapping(
     ).order_by(CropCycle.id)).all()
     for cycle in cycles:
         warnings.update(sync_crop_cycle_harvest_stock(db, cycle))
+    replan_open_orders(db)
     db.commit()
     response = CropTypeResponse.model_validate(crop_type)
     response.warnings = sorted(warnings)

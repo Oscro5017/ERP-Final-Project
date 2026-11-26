@@ -275,6 +275,135 @@ class InputItem(TimestampMixin, Base):
     application: Mapped[InputApplication] = relationship(back_populates="items")
 
 
+class ProductShelfLife(TimestampMixin, Base):
+    __tablename__ = "product_shelf_life"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), nullable=False, unique=True)
+    shelf_life_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    warn_days: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class LotExpiryOverride(TimestampMixin, Base):
+    __tablename__ = "lot_expiry_overrides"
+    __table_args__ = (UniqueConstraint("product_id", "lot_key", name="uq_lot_expiry_overrides_lot"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    lot_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    expires_on: Mapped[date] = mapped_column(Date, nullable=False)
+    reason_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+class StockWaste(TimestampMixin, Base):
+    __tablename__ = "stock_waste"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True)
+    lot_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(80), nullable=False)
+    reason: Mapped[str] = mapped_column(String(20), nullable=False)
+    note_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class SalesOrder(TimestampMixin, Base):
+    __tablename__ = "sales_orders"
+    __table_args__ = (UniqueConstraint("order_no", name="uq_sales_orders_order_no"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_no: Mapped[str] = mapped_column(String(32), nullable=False)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True)
+    order_date: Mapped[date] = mapped_column(Date, nullable=False)
+    safety_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    delivery_location_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    note_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False, index=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class SalesOrderLine(TimestampMixin, Base):
+    __tablename__ = "sales_order_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("sales_orders.id", ondelete="RESTRICT"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(80), nullable=False)
+    delivery_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    latest_sow_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    planting_task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, unique=True)
+
+
+class SalesOrderCycle(Base):
+    __tablename__ = "sales_order_cycles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    line_id: Mapped[int] = mapped_column(ForeignKey("sales_order_lines.id", ondelete="RESTRICT"), nullable=False, index=True)
+    cycle_id: Mapped[int] = mapped_column(ForeignKey("crop_cycles.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+
+class SalesOrderDelivery(TimestampMixin, Base):
+    __tablename__ = "sales_order_deliveries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    line_id: Mapped[int] = mapped_column(ForeignKey("sales_order_lines.id", ondelete="RESTRICT"), nullable=False, index=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("stock_documents.id", ondelete="RESTRICT"), nullable=False, index=True)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class SalesOrderLinePrice(TimestampMixin, Base):
+    """Agreed price per unit of an order line."""
+    __tablename__ = "sales_order_line_prices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    line_id: Mapped[int] = mapped_column(ForeignKey("sales_order_lines.id", ondelete="CASCADE"), nullable=False, unique=True)
+    unit_price_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+class SalesOrderOption(TimestampMixin, Base):
+    """Choices made for one order; a missing row means the automatic behaviour."""
+    __tablename__ = "sales_order_options"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("sales_orders.id", ondelete="CASCADE"), nullable=False, unique=True)
+    auto_planting: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class CropCycleOption(TimestampMixin, Base):
+    """Choices made for one crop cycle; a missing row means the automatic behaviour."""
+    __tablename__ = "crop_cycle_options"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cycle_id: Mapped[int] = mapped_column(ForeignKey("crop_cycles.id", ondelete="CASCADE"), nullable=False, unique=True)
+    create_tasks: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    record_harvest_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class StockDocumentPurpose(TimestampMixin, Base):
+    """Why an outbound document was issued."""
+    __tablename__ = "stock_document_purposes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("stock_documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("sales_orders.id", ondelete="RESTRICT"), nullable=True, index=True)
+
+
+class AutomationPreference(TimestampMixin, Base):
+    """A remembered "let the system do it" choice; a missing row means ask every time."""
+    __tablename__ = "automation_preferences"
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_automation_preferences_user_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    key: Mapped[str] = mapped_column(String(40), nullable=False)
+    mode: Mapped[str] = mapped_column(String(8), nullable=False)
+
+
 class TaskStatus(str, Enum):
     pending = "pending"
     done = "done"

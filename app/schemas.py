@@ -47,7 +47,7 @@ class CropTypeProductMappingUpdate(BaseModel):
     product_id: int | None = Field(default=None, gt=0)
 
 
-class CropCycleCreate(BaseModel):
+class _CropCycleFields(BaseModel):
     table_id: int
     batch_id: int
     crop_type_id: int
@@ -58,7 +58,14 @@ class CropCycleCreate(BaseModel):
     status: CycleStatus = CycleStatus.nursery
 
 
+class CropCycleCreate(_CropCycleFields):
+    create_tasks: bool | None = None
+    record_harvest_stock: bool | None = None
+
+
 class CropCycleUpdate(BaseModel):
+    create_tasks: bool | None = None
+    record_harvest_stock: bool | None = None
     status: CycleStatus | None = None
     nursery_start: date | None = None
     transplant_date: date | None = None
@@ -66,7 +73,7 @@ class CropCycleUpdate(BaseModel):
     harvest_quantity_kg: float | None = Field(default=None, ge=0)
 
 
-class CropCycleResponse(CropCycleCreate):
+class CropCycleResponse(_CropCycleFields):
     model_config = ConfigDict(from_attributes=True)
     id: int
     cycle_code: str
@@ -175,6 +182,7 @@ class ProductMovementResponse(DecryptionStatusResponse):
     movement_type: str
     source_type: str | None
     source_id: int | None
+    source_label: str | None = None
     occurred_at: datetime
     note: str | None
     voided: bool
@@ -254,6 +262,7 @@ class StockDocumentLineResponse(DecryptionStatusResponse):
 
 class _StockDocumentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    record_finance: bool | None = None
     doc_date: date | None = None
     crop_cycle_id: int | None = Field(default=None, gt=0)
     reference_no: str | None = Field(default=None, max_length=120)
@@ -270,6 +279,7 @@ class InboundDocumentCreate(_StockDocumentCreate):
 class OutboundDocumentCreate(_StockDocumentCreate):
     model_config = ConfigDict(extra="forbid")
     customer_id: int | None = Field(default=None, gt=0)
+    purpose: Literal["sale", "other"] | None = None
     doc_type: Literal["outbound"] = "outbound"
 
 
@@ -294,6 +304,11 @@ class StockDocumentResponse(DecryptionStatusResponse):
     customer_id: int | None
     customer_name: str | None
     crop_cycle_id: int | None
+    crop_cycle_label: str | None = None
+    purpose: str | None = None
+    order_id: int | None = None
+    order_no: str | None = None
+    finance_recorded: bool = False
     reference_no: str | None
     note: str | None
     void_reason: str | None
@@ -305,6 +320,12 @@ class StockDocumentResponse(DecryptionStatusResponse):
     is_masked: bool
     created_at: datetime
     updated_at: datetime
+
+
+class LastPriceResponse(BaseModel):
+    product_id: int
+    unit: str
+    unit_price: Decimal
 
 
 class StockDocumentListResponse(BaseModel):
@@ -476,6 +497,220 @@ class TaskCycleInfo(BaseModel):
     crop_name: str | None = None
 
 
+class ShelfLifeUpdate(BaseModel):
+    shelf_life_days: int = Field(ge=0, le=3650)
+    warn_days: int = Field(default=1, ge=0, le=3650)
+
+
+class ShelfLifeResponse(ShelfLifeUpdate):
+    model_config = ConfigDict(from_attributes=True)
+    product_id: int
+
+
+class FreshLotResponse(BaseModel):
+    lot_key: str
+    product_id: int
+    product_name: str
+    unit: str
+    cycle_id: int | None
+    received_on: date
+    expires_on: date
+    days_left: int
+    received_quantity: float
+    remaining_quantity: float
+    wasted_quantity: float
+    expiry_overridden: bool
+    status: Literal["fresh", "expiring", "expired", "empty"]
+
+
+class FreshProductResponse(BaseModel):
+    product_id: int
+    product_name: str
+    unit: str
+    shelf_life_days: int
+    warn_days: int
+    uncovered_quantity: float
+
+
+class FreshnessOverviewResponse(BaseModel):
+    items: list[FreshLotResponse]
+    products: list[FreshProductResponse]
+    expired: int
+    expiring: int
+    is_masked: bool
+
+
+class LotExpiryUpdate(BaseModel):
+    expires_on: date
+    reason: str = Field(min_length=1, max_length=500, pattern=r"\S")
+
+
+class StockWasteCreate(BaseModel):
+    product_id: int = Field(gt=0)
+    lot_key: str = Field(min_length=1, max_length=40)
+    quantity: Decimal = Field(gt=0, le=1_000_000)
+    reason: Literal["expired", "spoiled", "damaged", "pest", "other"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class StockWasteResponse(BaseModel):
+    id: int
+    product_id: int
+    product_name: str
+    lot_key: str
+    quantity: float
+    unit: str
+    reason: str
+    note: str | None
+    voided: bool
+    created_at: datetime
+    is_masked: bool
+    decrypt_failed: bool
+
+
+class StockWasteListResponse(BaseModel):
+    items: list[StockWasteResponse]
+    total: int
+
+
+class SalesOrderLineInput(BaseModel):
+    product_id: int = Field(gt=0)
+    quantity: Decimal = Field(gt=0, le=1_000_000)
+    unit: str | None = Field(default=None, max_length=80)
+    delivery_date: date
+    unit_price: Decimal | None = Field(default=None, ge=0, le=Decimal("99999999.99"))
+
+
+class SalesOrderLineUpdate(SalesOrderLineInput):
+    id: int | None = None
+
+
+class SalesOrderCreate(BaseModel):
+    customer_id: int = Field(gt=0)
+    order_date: date | None = None
+    safety_days: int = Field(default=0, ge=0, le=60)
+    delivery_location: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=1000)
+    auto_planting: bool = True
+    lines: list[SalesOrderLineInput] = Field(min_length=1, max_length=100)
+
+
+class SalesOrderUpdate(BaseModel):
+    customer_id: int | None = Field(default=None, gt=0)
+    safety_days: int | None = Field(default=None, ge=0, le=60)
+    delivery_location: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=1000)
+    auto_planting: bool | None = None
+    lines: list[SalesOrderLineUpdate] | None = Field(default=None, min_length=1, max_length=100)
+
+
+class SalesOrderClose(BaseModel):
+    status: Literal["delivered", "cancelled"]
+
+
+class SalesOrderDeliverLine(BaseModel):
+    line_id: int = Field(gt=0)
+    quantity: Decimal = Field(gt=0, le=1_000_000)
+    unit_price: Decimal | None = Field(default=None, ge=0, le=Decimal("99999999.99"))
+    use_order_price: bool = False
+
+
+class SalesOrderDeliver(BaseModel):
+    doc_date: date | None = None
+    note: str | None = Field(default=None, max_length=500)
+    record_finance: bool = True
+    close_when_complete: bool = True
+    lines: list[SalesOrderDeliverLine] = Field(min_length=1, max_length=100)
+
+
+class SalesOrderLineResponse(BaseModel):
+    id: int
+    product_id: int
+    product_name: str
+    crop_name: str | None
+    quantity: float
+    unit: str
+    delivery_date: date
+    latest_sow_date: date | None
+    planting_status: Literal["unmapped", "not_required", "waiting", "late", "ready", "planted", "covered", "manual", "delivered"]
+    delivered_quantity: float
+    unit_price: Decimal | str | None
+    has_price: bool
+    planting_ready: bool
+    from_stock: float
+    from_growing: float
+    to_plant: float
+    planting_task_id: int | None
+    tables_needed: int | None
+    cycle_ids: list[int]
+
+
+class SalesOrderResponse(BaseModel):
+    id: int
+    order_no: str
+    customer_id: int
+    customer_name: str
+    order_date: date
+    safety_days: int
+    delivery_location: str | None
+    note: str | None
+    status: str
+    auto_planting: bool
+    lines: list[SalesOrderLineResponse]
+    is_masked: bool
+    decrypt_failed: bool
+    created_at: datetime
+
+
+class SalesOrderDeliverResponse(BaseModel):
+    order: SalesOrderResponse
+    document_id: int
+    doc_no: str
+    warnings: list[str]
+
+
+class SalesOrderListResponse(BaseModel):
+    items: list[SalesOrderResponse]
+    total: int
+
+
+class PlantingProposalResponse(BaseModel):
+    line_id: int
+    order_no: str
+    crop_name: str
+    quantity: float
+    unit: str
+    to_plant: float
+    delivery_date: date
+    nursery_start: date
+    expected_ready_date: date
+    is_late: bool
+    tables_needed: int | None
+    free_tables: list[TableResponse]
+    suggested_table_ids: list[int]
+    can_create: bool
+
+
+class PlantingCreate(BaseModel):
+    table_ids: list[int] = Field(min_length=1, max_length=49)
+    nursery_start: date
+    create_tasks: bool = True
+
+
+class PlantingCreateResponse(BaseModel):
+    cycle_ids: list[int]
+
+
+AutomationKey = Literal[
+    "order_planting", "planting_cycles", "cycle_tasks", "harvest_stock",
+    "order_fill", "outbound_finance", "inbound_finance", "order_close",
+]
+
+
+class AutomationPreferenceUpdate(BaseModel):
+    mode: Literal["auto", "manual"]
+
+
 class TaskResponse(DecryptionStatusResponse):
     id: int
     cycle_id: int | None = None
@@ -488,6 +723,8 @@ class TaskResponse(DecryptionStatusResponse):
     extra_cost: Decimal | str | None = None
     created_at: datetime
     cycle_info: TaskCycleInfo | None = None
+    order_line_id: int | None = None
+    planting_ready: bool = False
     is_masked: bool
 
 

@@ -16,9 +16,10 @@ from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
 from .migrations import migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
-from .routers import auth, crop_cycles, customers, dashboard, finance, input_applications, insights, products, reference, sensors, stock, suppliers, tasks, trade_documents, weather
+from .routers import auth, crop_cycles, customers, dashboard, finance, freshness, input_applications, insights, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
 from .seed import seed_database, validate_production_default_passwords
 from .services.encryption_canary import ensure_encryption_canary
+from .services.sales_orders import replan_open_orders_job
 from .services.weather import (
     capture_forecast_snapshots,
     catch_up_weather_history,
@@ -108,6 +109,22 @@ def register_weather_jobs(target_scheduler, settings) -> None:
     )
 
 
+def run_order_replan_job():
+    _run_scheduled_job("order replan", replan_open_orders_job)
+
+
+def register_order_jobs(target_scheduler, settings) -> None:
+    target_scheduler.add_job(
+        run_order_replan_job,
+        CronTrigger(hour=0, minute=10, timezone=settings.farm_timezone),
+        id="order_replan_daily",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=settings.scheduler_misfire_grace_seconds,
+    )
+
+
 def log_registered_weather_jobs(target_scheduler) -> None:
     for job in target_scheduler.get_jobs():
         logger.info("Registered scheduled job %s; next run at %s.", job.id, job.next_run_time)
@@ -128,10 +145,11 @@ async def lifespan(_app: FastAPI):
     # CropType's new optional mapping points to products; create that additive
     # table before the canary audit reflects foreign-key dependencies.
     migrate_products_stock(engine)
+    # Order deliveries reference stock documents, so they must exist for the audit too.
+    migrate_stock_documents(engine)
     with SessionLocal() as db:
         ensure_encryption_canary(db, engine, settings)
 
-    migrate_stock_documents(engine)
     migrate_crop_type_product_mapping(engine)
     migrate_input_product_mapping(engine)
     migrate_finance_entries(engine)
@@ -151,6 +169,7 @@ async def lifespan(_app: FastAPI):
     catchup_task = asyncio.create_task(asyncio.to_thread(run_weather_catchup_job))
     try:
         register_weather_jobs(scheduler, settings)
+        register_order_jobs(scheduler, settings)
         scheduler.start()
         log_registered_weather_jobs(scheduler)
     except Exception as exc:
@@ -201,9 +220,12 @@ def create_app(settings=None) -> FastAPI:
     api.include_router(dashboard.router)
     api.include_router(customers.router)
     api.include_router(finance.router)
+    api.include_router(freshness.router)
     api.include_router(insights.router)
     api.include_router(input_applications.router)
+    api.include_router(preferences.router)
     api.include_router(products.router)
+    api.include_router(sales_orders.router)
     api.include_router(suppliers.router)
     api.include_router(stock.router)
     api.include_router(trade_documents.router)
@@ -216,7 +238,7 @@ def create_app(settings=None) -> FastAPI:
     def spa_fallback(path: str):
         if path.rstrip("/") == "weather":
             return FileResponse("frontend/index.html")
-        if path.startswith(("auth", "crop-cycles", "customers", "products", "tables", "batches", "crop-types", "tasks", "weather", "sensors", "input-applications", "input-catalog")):
+        if path.startswith(("auth", "crop-cycles", "customers", "products", "tables", "batches", "crop-types", "tasks", "freshness", "preferences", "sales-orders", "weather", "sensors", "input-applications", "input-catalog")):
             raise HTTPException(status_code=404, detail="Not Found")
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(status_code=404, detail="Not Found")

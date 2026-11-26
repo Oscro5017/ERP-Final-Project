@@ -12,6 +12,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.products_stock import convert_quantity, on_hand, on_hand_grouped, record_movement, sync_product_low_stock_reminder
+from ..services.sales_orders import replan_open_orders
 from ..services.secure_fields import encrypt_text, hash_catalog_name, normalize_catalog_name, present_text_safe, safe_decrypt_text
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -164,6 +165,7 @@ def adjust_product(product_id: int, payload: ProductAdjustmentCreate, db: Sessio
     if delta:
         try:
             record_movement(db, product_id, delta, product.unit, "adjustment", occurred_at=payload.occurred_at, note=payload.note)
+            replan_open_orders(db)
             db.commit()
         except ValueError:
             db.rollback()

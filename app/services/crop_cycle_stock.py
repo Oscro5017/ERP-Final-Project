@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import CropCycle, CropType, Product, StockMovement
+from .crop_cycle_options import cycle_option
 from .products_stock import convert_quantity, record_movement, void_source_movements
 from .source_types import CROP_CYCLE_HARVEST
 
@@ -19,7 +20,8 @@ def sync_crop_cycle_harvest_stock(db: Session, cycle: CropCycle) -> list[str]:
     ).order_by(StockMovement.id)).all()
 
     quantity = cycle.harvest_quantity_kg
-    if cycle.deleted_at is not None or quantity is None or quantity <= 0:
+    opted_out = not cycle_option(db, cycle.id, "record_harvest_stock")
+    if cycle.deleted_at is not None or quantity is None or quantity <= 0 or opted_out:
         if current:
             void_source_movements(db, CROP_CYCLE_HARVEST, cycle.id)
         return []
