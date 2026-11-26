@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { activeMenuItem, onMenuPath } from './sidebarMatch';
 import {
   Boxes,
   ChevronDown,
@@ -19,7 +20,7 @@ const navigationGroups = [
   { id: 'farm', name: 'ฟาร์ม', icon: Sprout, children: [
     { name: 'รอบปลูก', to: '/plots' },
     { name: 'กิจกรรม', to: '/activities' },
-    { name: 'ผลผลิต', to: '/harvest' },
+    { name: 'ผลผลิต', to: '/plots?status=harvested' },
   ] },
   { id: 'weather', name: 'สภาพอากาศ', icon: CloudSun, children: [
     { name: 'พยากรณ์', to: '/weather#forecast' },
@@ -54,9 +55,8 @@ const navigationGroups = [
 function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }) {
   const isCollapsed = collapsed && !mobileOpen;
   const location = useLocation();
-  const activeGroup = navigationGroups.find((group) => group.children.some((item) => (
-    item.to && location.pathname === item.to.split('#')[0]
-  )))?.id;
+  const activeItem = activeMenuItem(navigationGroups.flatMap((group) => group.children), location);
+  const activeGroup = navigationGroups.find((group) => group.children.some((item) => onMenuPath(item, location)))?.id;
   const [expandedGroup, setExpandedGroup] = useState(activeGroup || null);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }) {
           {navigationGroups.map((group) => {
             const Icon = group.icon;
             const isExpanded = expandedGroup === group.id;
-            const hasActiveChild = group.children.some((item) => item.to && location.pathname === item.to.split('#')[0]);
+            const hasActiveChild = group.children.some((item) => onMenuPath(item, location));
 
             return (
               <div key={group.id}>
@@ -133,16 +133,16 @@ function Sidebar({ collapsed, mobileOpen, onToggle, onNavigate }) {
                       }
 
                       return (
-                        <NavLink
+                        <Link
                           key={item.name}
                           to={item.to}
-                          end={!item.to.includes('#')}
                           onClick={onNavigate}
-                          className={({ isActive }) => `mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-farm-800 text-white' : 'text-farm-100 hover:bg-farm-800/70'}`}
+                          aria-current={item === activeItem ? 'page' : undefined}
+                          className={`mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${item === activeItem ? 'bg-farm-800 text-white' : 'text-farm-100 hover:bg-farm-800/70'}`}
                         >
                           {ChildIcon && <ChildIcon size={14} />}
                           {item.name}
-                        </NavLink>
+                        </Link>
                       );
                     })}
                   </div>

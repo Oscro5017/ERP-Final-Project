@@ -25,12 +25,12 @@ function FarmPlots() {
   const { confirm } = useDialog();
   const navigate = useNavigate();
   const { ask } = useAutomation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState(() => {
-    const requestedStatus = searchParams.get('status');
-    return cropCycleStatuses.some((status) => status.value === requestedStatus) ? requestedStatus : 'ทั้งหมด';
-  });
+  // The status filter lives in the URL, so the menu (e.g. ผลผลิต = ?status=harvested) and the dropdown stay in step.
+  const requestedStatus = searchParams.get('status');
+  const filter = cropCycleStatuses.some((status) => status.value === requestedStatus) ? requestedStatus : 'ทั้งหมด';
+  const setFilter = (value) => setSearchParams(value === 'ทั้งหมด' ? {} : { status: value }, { replace: true });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [plots, setPlots] = useState([]);
