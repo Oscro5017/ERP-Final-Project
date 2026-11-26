@@ -7,13 +7,14 @@ import Weather from './pages/Weather';
 import FarmPlots from './pages/FarmPlots';
 import PlotDetail from './pages/PlotDetail';
 import Activities from './pages/Activities';
-import Products from './pages/Products';
-import Stock from './pages/Stock';
-import TradeDocuments from './pages/TradeDocuments';
+import Warehouse from './pages/Warehouse';
+import Sales from './pages/Sales';
+import Settings from './pages/Settings';
 import Finance from './pages/Finance';
 import Suppliers from './pages/Suppliers';
 import Insights from './pages/Insights';
 import CustomerPanel from './components/CustomerPanel';
+import { AutomationProvider } from './components/AutomationPrompt';
 import { clearToken, getToken } from './lib/api';
 
 function NotFound() {
@@ -41,6 +42,7 @@ function App() {
   };
 
   return (
+    <AutomationProvider>
     <DashboardLayout onLogout={handleLogout}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -49,9 +51,14 @@ function App() {
         <Route path="/plots/:id" element={<PlotDetail />} />
         <Route path="/activities" element={<Activities />} />
         <Route path="/harvest" element={<Navigate to="/plots?status=harvested" replace />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/stock" element={<Stock />} />
-        <Route path="/trade" element={<TradeDocuments />} />
+        <Route path="/warehouse/*" element={<Warehouse />} />
+        <Route path="/sales/*" element={<Sales />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/fresh-stock" element={<Navigate to="/warehouse/fresh" replace />} />
+        <Route path="/orders" element={<Navigate to="/sales/orders" replace />} />
+        <Route path="/products" element={<Navigate to="/warehouse/items" replace />} />
+        <Route path="/stock" element={<Navigate to="/warehouse/items" replace />} />
+        <Route path="/trade" element={<Navigate to="/warehouse/documents" replace />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/partners/customers" element={<CustomerPanel />} />
         <Route path="/partners/suppliers" element={<Suppliers />} />
@@ -59,6 +66,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
+    </AutomationProvider>
   );
 }
 

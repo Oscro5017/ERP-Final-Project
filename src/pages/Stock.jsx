@@ -8,31 +8,26 @@ const BALANCES_LIMIT = 200;
 const MOVEMENTS_LIMIT = 50;
 
 const MOVEMENT_TYPE_LABELS = {
-  inbound: 'รับเข้า',
-  outbound: 'ส่งออก',
+  receipt: 'รับเข้า',
+  shipment: 'ส่งออก',
+  application: 'ใช้ในแปลง',
   adjustment: 'ปรับยอด',
-  harvest_in: 'เก็บเกี่ยว',
-  input_out: 'ใช้วัตถุดิบ',
 };
 
 const MOVEMENT_TYPE_STYLES = {
-  inbound: 'bg-emerald-100 text-emerald-700',
-  outbound: 'bg-rose-100 text-rose-700',
+  receipt: 'bg-emerald-100 text-emerald-700',
+  shipment: 'bg-rose-100 text-rose-700',
+  application: 'bg-sky-100 text-sky-700',
   adjustment: 'bg-amber-100 text-amber-700',
-  harvest_in: 'bg-green-100 text-green-700',
-  input_out: 'bg-sky-100 text-sky-700',
 };
 
 const MOVEMENT_TYPE_OPTIONS = Object.entries(MOVEMENT_TYPE_LABELS);
 
 const SOURCE_TYPE_LABELS = {
-  stock_receipt: 'ใบรับเข้า',
-  stock_issue: 'ใบเบิกจ่าย',
-  stock_document: 'เอกสารคลัง',
-  harvest: 'การเก็บเกี่ยว',
-  input_application: 'การใช้วัตถุดิบ',
-  adjustment: 'ปรับยอดสต็อก',
-  manual: 'บันทึกด้วยตนเอง',
+  stock_document: 'เอกสาร',
+  crop_cycle_harvest: 'เก็บเกี่ยว',
+  input_application: 'ใช้ปุ๋ย/ยา',
+  stock_waste: 'ของเสีย',
 };
 
 function formatNumber(value) {
@@ -41,14 +36,13 @@ function formatNumber(value) {
   return num.toLocaleString('th-TH', { maximumFractionDigits: 3 });
 }
 
-function formatSource(sourceType, sourceId) {
-  if (!sourceType && !sourceId) return '-';
-  const label = SOURCE_TYPE_LABELS[sourceType] || sourceType || 'ระบบ';
-  return sourceId ? `${label} #${sourceId}` : label;
+function formatSource(item) {
+  if (!item.source_type) return '-';
+  return [SOURCE_TYPE_LABELS[item.source_type] || item.source_type, item.source_label].filter(Boolean).join(' ');
 }
 
 function Stock() {
-  const [activeTab, setActiveTab] = useState('balances');
+  const [activeTab, setActiveTab] = useState('movements');
 
   // Balances state
   const [balances, setBalances] = useState([]);
@@ -100,7 +94,7 @@ function Stock() {
         setProductOptions(items);
       }
     } catch (error) {
-      setBalancesError(error.message || 'ไม่สามารถโหลดยอดคงเหลือสินค้าได้');
+      setBalancesError(error.message || 'ไม่สามารถโหลดยอดคงเหลือได้');
     } finally {
       setBalancesLoading(false);
     }
@@ -137,7 +131,7 @@ function Stock() {
       setMovements(items);
       setMovementsTotal(Number(data?.total ?? items.length));
     } catch (error) {
-      setMovementsError(error.message || 'ไม่สามารถโหลดประวัติเคลื่อนไหวสินค้าได้');
+      setMovementsError(error.message || 'ไม่สามารถโหลดประวัติเคลื่อนไหวได้');
     } finally {
       setMovementsLoading(false);
     }
@@ -206,8 +200,8 @@ function Stock() {
             <Package size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-800">คลังสินค้า</h1>
-            <p className="text-sm text-slate-500">ดูยอดคงเหลือและประวัติการเคลื่อนไหวสินค้า</p>
+            <h1 className="text-2xl font-semibold text-slate-800">ประวัติคลัง</h1>
+            <p className="text-sm text-slate-500">ดูการเคลื่อนไหวและยอดย้อนหลัง ณ วันที่</p>
           </div>
         </div>
 
@@ -222,7 +216,7 @@ function Stock() {
             }`}
           >
             <Package size={16} />
-            ยอดคงเหลือ
+            ยอดย้อนหลัง
           </button>
           <button
             type="button"
@@ -243,7 +237,7 @@ function Stock() {
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
           <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-lg font-semibold text-slate-800">ยอดคงเหลือสินค้า</h2>
+              <h2 className="text-lg font-semibold text-slate-800">ยอดคงเหลือ</h2>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-farm-50 px-3 py-1 text-xs font-medium text-farm-800">
                 <Calendar size={14} />
                 ณ วันที่ {formatThaiDate(displayedAsOf)}
@@ -261,7 +255,7 @@ function Stock() {
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
               <span className="inline-flex items-center gap-1">
                 <Filter size={13} />
-                สินค้า
+                รายการ
               </span>
               <select
                 value={balanceProductId}
@@ -271,11 +265,11 @@ function Stock() {
                 }}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-farm-700"
               >
-                <option value="">สินค้าทั้งหมด</option>
+                <option value="">ทุกรายการ</option>
                 {productOptions.map((item) => (
                   <option key={item.product_id} value={String(item.product_id)}>
                     {item.is_masked
-                      ? `สินค้า #${item.product_id} (เข้ารหัส)`
+                      ? `รายการลำดับ ${item.product_id} (ปิดบัง)`
                       : `${item.product_name} (${item.unit})`}
                   </option>
                 ))}
@@ -321,12 +315,12 @@ function Stock() {
               {balancesError}
             </div>
           ) : balancesLoading ? (
-            <div className="p-10 text-center text-sm text-slate-500">กำลังโหลดยอดคงเหลือสินค้า...</div>
+            <div className="p-10 text-center text-sm text-slate-500">กำลังโหลดยอดคงเหลือ...</div>
           ) : balances.length === 0 ? (
             <div className="p-10 text-center">
               <Package className="mx-auto mb-2 text-slate-400" size={24} />
-              <p className="font-medium text-slate-700">ไม่พบข้อมูลยอดคงเหลือสินค้า</p>
-              <p className="mt-1 text-sm text-slate-500">ลองเปลี่ยนตัวกรองสินค้าหรือวันที่ตรวจสอบ</p>
+              <p className="font-medium text-slate-700">ไม่พบข้อมูลยอดคงเหลือ</p>
+              <p className="mt-1 text-sm text-slate-500">ลองเปลี่ยนตัวกรองรายการหรือวันที่ตรวจสอบ</p>
             </div>
           ) : (
             <>
@@ -334,7 +328,7 @@ function Stock() {
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
-                      <th scope="col" className="px-4 py-3 font-semibold">สินค้า</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">รายการ</th>
                       <th scope="col" className="px-4 py-3 font-semibold">หน่วย</th>
                       <th scope="col" className="px-4 py-3 text-right font-semibold">จำนวน</th>
                       <th scope="col" className="px-4 py-3 font-semibold">สถานะ</th>
@@ -350,7 +344,7 @@ function Stock() {
                           <td className="px-4 py-3">
                             {item.is_masked ? (
                               <span className="font-mono text-slate-400">
-                                {item.product_name || 'ข้อมูลเข้ารหัส'}
+                                {`รายการลำดับ ${item.product_id} (ปิดบัง)`}
                               </span>
                             ) : (
                               <span className="font-medium text-slate-800">{item.product_name}</span>
@@ -426,7 +420,7 @@ function Stock() {
           <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <ArrowUpDown size={18} className="text-farm-700" />
-              <h2 className="text-lg font-semibold text-slate-800">ประวัติการเคลื่อนไหวสินค้า</h2>
+              <h2 className="text-lg font-semibold text-slate-800">ประวัติการเคลื่อนไหว</h2>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
               ทั้งหมด {formatNumber(movementsTotal)} รายการ
@@ -493,7 +487,7 @@ function Stock() {
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
                 <span className="inline-flex items-center gap-1">
                   <Package size={13} />
-                  สินค้า
+                  รายการ
                 </span>
                 <select
                   value={movementProductId}
@@ -503,11 +497,11 @@ function Stock() {
                   }}
                   className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-farm-700"
                 >
-                  <option value="">สินค้าทั้งหมด</option>
+                  <option value="">ทุกรายการ</option>
                   {productOptions.map((item) => (
                     <option key={item.product_id} value={String(item.product_id)}>
                       {item.is_masked
-                        ? `สินค้า #${item.product_id} (เข้ารหัส)`
+                        ? `รายการลำดับ ${item.product_id} (ปิดบัง)`
                         : `${item.product_name} (${item.unit})`}
                     </option>
                   ))}
@@ -559,11 +553,11 @@ function Stock() {
               {movementsError}
             </div>
           ) : movementsLoading ? (
-            <div className="p-10 text-center text-sm text-slate-500">กำลังโหลดประวัติเคลื่อนไหวสินค้า...</div>
+            <div className="p-10 text-center text-sm text-slate-500">กำลังโหลดประวัติเคลื่อนไหว...</div>
           ) : movements.length === 0 ? (
             <div className="p-10 text-center">
               <ArrowUpDown className="mx-auto mb-2 text-slate-400" size={24} />
-              <p className="font-medium text-slate-700">ไม่พบประวัติการเคลื่อนไหวสินค้า</p>
+              <p className="font-medium text-slate-700">ไม่พบประวัติการเคลื่อนไหว</p>
               <p className="mt-1 text-sm text-slate-500">ลองปรับช่วงวันที่หรือประเภทการเคลื่อนไหว</p>
             </div>
           ) : (
@@ -612,7 +606,7 @@ function Stock() {
                             </div>
                             {product && (
                               <div className={`mt-0.5 text-xs ${product.is_masked ? 'font-mono text-slate-400' : 'text-slate-500'}`}>
-                                {product.is_masked ? `#${item.product_id}` : `${product.product_name} (${product.unit})`}
+                                {product.is_masked ? `รายการลำดับ ${item.product_id} (ปิดบัง)` : `${product.product_name} (${product.unit})`}
                               </div>
                             )}
                           </td>
@@ -639,7 +633,7 @@ function Stock() {
                           </td>
 
                           <td className={`px-4 py-3 ${isVoided ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
-                            {formatSource(item.source_type, item.source_id)}
+                            {formatSource(item)}
                           </td>
 
                           <td className="px-4 py-3">

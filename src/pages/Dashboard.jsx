@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import StatCard from '../components/StatCard';
 import { Package, CheckSquare, AlertTriangle, Wallet } from 'lucide-react';
@@ -9,6 +10,7 @@ import Toast from '../components/Toast';
 
 function Dashboard() {
   const [summary, setSummary] = useState(null);
+  const [freshness, setFreshness] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -23,6 +25,11 @@ function Dashboard() {
     api('/dashboard/summary')
       .then((data) => {
         if (active) setSummary(data);
+      })
+      .catch(() => {});
+    api('/freshness/lots')
+      .then((data) => {
+        if (active) setFreshness(data);
       })
       .catch(() => {});
     return () => {
@@ -53,9 +60,15 @@ function Dashboard() {
         </div>
       </div>
 
+      {freshness && (freshness.expired > 0 || freshness.expiring > 0) && (
+        <Link to="/warehouse/fresh" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          <AlertTriangle size={16} /> ของสดหมดอายุ {freshness.expired} ล็อต · ใกล้หมดอายุ {freshness.expiring} ล็อต
+        </Link>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="สินค้า"
+          title="รายการในคลัง"
           value={summary?.product_count ?? '—'}
           icon={Package}
           tone="green"

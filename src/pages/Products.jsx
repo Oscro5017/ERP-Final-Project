@@ -1,26 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Plus, Filter, Pencil, Trash2, Package, Scale } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Package, Scale } from 'lucide-react';
 import { api, getRole } from '../lib/api';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
-
-const CATEGORIES = [
-  'vegetable',
-  'seed',
-  'fertilizer',
-  'chemical',
-  'blend',
-  'other',
-];
-
-const CATEGORY_LABELS = {
-  vegetable: 'ผัก / ผลผลิต',
-  seed: 'เมล็ดพันธุ์',
-  fertilizer: 'ปุ๋ย',
-  chemical: 'สารเคมี',
-  blend: 'วัสดุผสม',
-  other: 'อื่นๆ',
-};
+import { CATEGORIES, CATEGORY_LABELS, itemName } from '../utils/itemCategories';
 
 const PAGE_LIMIT = 50;
 
@@ -118,7 +101,7 @@ function Products() {
       setProducts(Array.isArray(data?.items) ? data.items : []);
       setTotal(typeof data?.total === 'number' ? data.total : 0);
     } catch (error) {
-      setErrorMessage(error.message || 'ไม่สามารถโหลดข้อมูลสินค้าได้');
+      setErrorMessage(error.message || 'ไม่สามารถโหลดข้อมูลได้');
     } finally {
       setIsLoading(false);
     }
@@ -176,11 +159,11 @@ function Products() {
     const needsName = !editingProduct || !editingProduct.is_masked;
 
     if (needsName && !trimmedName) {
-      setProductFormError('กรุณาระบุชื่อสินค้า');
+      setProductFormError('กรุณาระบุชื่อ');
       return;
     }
     if (!trimmedUnit) {
-      setProductFormError('กรุณาระบุหน่วยสินค้า');
+      setProductFormError('กรุณาระบุหน่วย');
       return;
     }
 
@@ -210,7 +193,7 @@ function Products() {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
-        showToast('บันทึกการแก้ไขสินค้าแล้ว');
+        showToast('บันทึกการแก้ไขรายการแล้ว');
       } else {
         const payload = {
           category: productForm.category,
@@ -223,25 +206,25 @@ function Products() {
           method: 'POST',
           body: JSON.stringify(payload),
         });
-        showToast('เพิ่มสินค้าเรียบร้อยแล้ว');
+        showToast('เพิ่มรายการเรียบร้อยแล้ว');
       }
       closeProductModal();
       await loadProducts(search, categoryFilter, offset);
     } catch (error) {
-      setProductFormError(error.message || 'ไม่สามารถบันทึกข้อมูลสินค้าได้');
+      setProductFormError(error.message || 'ไม่สามารถบันทึกข้อมูลได้');
     } finally {
       setIsSavingProduct(false);
     }
   };
 
   const handleDeleteProduct = async (product) => {
-    const displayName = product.is_masked ? `#${product.id} (ข้อมูลเข้ารหัส)` : product.name;
-    if (!window.confirm(`ต้องการลบสินค้า "${displayName}" ใช่หรือไม่?`)) {
+    const displayName = itemName(product);
+    if (!window.confirm(`ต้องการลบรายการ "${displayName}" ใช่หรือไม่?`)) {
       return;
     }
     try {
       await api(`/products/${product.id}`, { method: 'DELETE' });
-      showToast('ลบสินค้าแล้ว');
+      showToast('ลบรายการแล้ว');
       const nextOffset = products.length === 1 && offset > 0 ? Math.max(0, offset - PAGE_LIMIT) : offset;
       if (nextOffset !== offset) {
         setOffset(nextOffset);
@@ -249,7 +232,7 @@ function Products() {
         await loadProducts(search, categoryFilter, offset);
       }
     } catch (error) {
-      showToast(error.message || 'ไม่สามารถลบสินค้าได้');
+      showToast(error.message || 'ไม่สามารถลบรายการได้');
     }
   };
 
@@ -329,8 +312,8 @@ function Products() {
             <Package size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-800">สินค้า</h1>
-            <p className="text-sm text-slate-500">จัดการสินค้าทั้งวัตถุดิบและผลผลิต</p>
+            <h1 className="text-2xl font-semibold text-slate-800">รายการของ</h1>
+            <p className="text-sm text-slate-500">เลือกประเภทด้านบน ดูยอดคงเหลือและปรับยอดได้ในตาราง</p>
           </div>
         </div>
         <button
@@ -339,8 +322,22 @@ function Products() {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-farm-700 px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:bg-farm-800"
         >
           <Plus size={16} />
-          เพิ่มสินค้า
+          เพิ่มรายการ
         </button>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="ประเภท">
+        {['', ...CATEGORIES].map((category) => (
+          <button
+            key={category}
+            type="button"
+            aria-pressed={categoryFilter === category}
+            onClick={() => handleCategoryChange({ target: { value: category } })}
+            className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium ${categoryFilter === category ? 'border-farm-700 bg-farm-700 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+          >
+            {category ? CATEGORY_LABELS[category] : 'ทั้งหมด'}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-soft md:flex-row md:items-center md:justify-between">
@@ -350,26 +347,10 @@ function Products() {
             type="text"
             value={search}
             onChange={handleSearchChange}
-            placeholder="ค้นหาชื่อสินค้า"
-            aria-label="ค้นหาชื่อสินค้า"
+            placeholder="ค้นหาชื่อ"
+            aria-label="ค้นหาชื่อ"
             className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
-        </div>
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-          <Filter size={16} className="shrink-0 text-slate-500" />
-          <select
-            value={categoryFilter}
-            onChange={handleCategoryChange}
-            aria-label="กรองตามประเภทสินค้า"
-            className="bg-transparent text-sm text-slate-700 outline-none"
-          >
-            <option value="">ทุกประเภท</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {CATEGORY_LABELS[cat]}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -384,7 +365,7 @@ function Products() {
           <span>ทั้งหมด {total.toLocaleString('th-TH')} รายการ</span>
           {!isOwner && (
             <span className="text-xs text-slate-400">
-              ชื่อสินค้าถูกเข้ารหัสตามสิทธิ์ผู้ใช้งาน
+              ชื่อถูกเข้ารหัสตามสิทธิ์ผู้ใช้งาน
             </span>
           )}
         </div>
@@ -393,7 +374,7 @@ function Products() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="px-4 py-3 font-semibold">ชื่อสินค้า</th>
+                <th className="px-4 py-3 font-semibold">ชื่อ</th>
                 <th className="px-4 py-3 font-semibold">ประเภท</th>
                 <th className="px-4 py-3 font-semibold">หน่วย</th>
                 <th className="px-4 py-3 font-semibold text-right">คงเหลือ</th>
@@ -406,13 +387,13 @@ function Products() {
               {isLoading ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
-                    กำลังโหลดข้อมูลสินค้า...
+                    กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-10 text-center text-slate-500">
-                    ไม่พบรายการสินค้า
+                    ไม่พบรายการ
                   </td>
                 </tr>
               ) : (
@@ -425,12 +406,11 @@ function Products() {
                           <span
                             className={
                               item.is_masked
-                                ? 'font-mono text-slate-400 break-all'
+                                ? 'text-slate-500'
                                 : 'font-medium text-slate-800'
                             }
-                            title={item.is_masked ? item.name : undefined}
                           >
-                            {item.name}
+                            {itemName(item)}
                           </span>
                           {item.decrypt_failed && (
                             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
@@ -475,8 +455,8 @@ function Products() {
                             type="button"
                             onClick={() => openEditModal(item)}
                             className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                            title="แก้ไขสินค้า"
-                            aria-label="แก้ไขสินค้า"
+                            title="แก้ไขรายการ"
+                            aria-label="แก้ไขรายการ"
                           >
                             <Pencil size={15} />
                           </button>
@@ -484,8 +464,8 @@ function Products() {
                             type="button"
                             onClick={() => handleDeleteProduct(item)}
                             className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
-                            title="ลบสินค้า"
-                            aria-label="ลบสินค้า"
+                            title="ลบรายการ"
+                            aria-label="ลบรายการ"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -528,7 +508,7 @@ function Products() {
 
       <Modal
         isOpen={isProductModalOpen}
-        title={editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า'}
+        title={editingProduct ? 'แก้ไขรายการ' : 'เพิ่มรายการ'}
         onClose={closeProductModal}
       >
         <form onSubmit={handleProductSubmit} className="space-y-4">
@@ -539,7 +519,7 @@ function Products() {
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">ประเภทสินค้า</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">ประเภท</label>
             <select
               value={productForm.category}
               onChange={(event) => setProductForm((prev) => ({ ...prev, category: event.target.value }))}
@@ -554,7 +534,7 @@ function Products() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">ชื่อสินค้า</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">ชื่อ</label>
             {editingProduct?.is_masked ? (
               <div className="space-y-1">
                 <input
@@ -564,7 +544,7 @@ function Products() {
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-400"
                 />
                 <p className="text-xs text-slate-400">
-                  ข้อมูลชื่อสินค้าถูกเข้ารหัส จึงไม่สามารถแก้ไขชื่อในสิทธิ์นี้ได้
+                  ข้อมูลชื่อถูกเข้ารหัส จึงไม่สามารถแก้ไขชื่อในสิทธิ์นี้ได้
                 </p>
               </div>
             ) : (
@@ -615,7 +595,7 @@ function Products() {
               onChange={(event) => setProductForm((prev) => ({ ...prev, is_active: event.target.checked }))}
               className="h-4 w-4 rounded border-slate-300 text-farm-700"
             />
-            เปิดใช้งานสินค้า
+            เปิดใช้งานรายการ
           </label>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -646,7 +626,7 @@ function Products() {
           <form onSubmit={handleAdjustSubmit} className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">สินค้า</span>
+                <span className="text-slate-500">รายการ</span>
                 <span
                   className={
                     adjustingProduct.is_masked

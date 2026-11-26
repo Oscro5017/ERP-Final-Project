@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Clock, Plus, ArrowRight, Calendar, AlertCircle } 
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { formatThaiDate, getLocalDateString, getRelativeDayLabel } from '../utils/dateUtils';
+import PlantingPrompt from './PlantingPrompt';
 import ThaiDateInput from './ThaiDateInput';
 
 export default function TaskWidget({ onToast }) {
@@ -13,6 +14,7 @@ export default function TaskWidget({ onToast }) {
   const [newTitle, setNewTitle] = useState('');
   const [newDueDate, setNewDueDate] = useState(getLocalDateString());
   const [submitting, setSubmitting] = useState(false);
+  const [plantingLineId, setPlantingLineId] = useState(null);
 
   const loadTasks = async () => {
     try {
@@ -41,10 +43,11 @@ export default function TaskWidget({ onToast }) {
     try {
       // Optimistic update
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
-      await api(`/tasks/${task.id}`, {
+      const updated = await api(`/tasks/${task.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'done' }),
       });
+      if (updated.planting_ready) setPlantingLineId(updated.order_line_id);
       if (onToast) onToast(`เสร็จสิ้นงาน: "${task.is_masked ? 'ข้อมูลเข้ารหัส' : task.title}"`);
     } catch (err) {
       if (onToast) onToast(err.message);
@@ -79,6 +82,11 @@ export default function TaskWidget({ onToast }) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+      <PlantingPrompt
+        lineId={plantingLineId}
+        onClose={() => setPlantingLineId(null)}
+        onCreated={(count) => { setPlantingLineId(null); if (onToast) onToast(`สร้างรอบปลูก ${count} รอบแล้ว`); loadTasks(); }}
+      />
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">

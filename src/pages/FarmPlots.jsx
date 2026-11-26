@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import { useAutomation } from '../components/AutomationPrompt';
 import Toast from '../components/Toast';
 import { cropCycleStatuses, cropCycleStatusLabels } from '../constants/cropCycleStatus';
 import { api } from '../lib/api';
@@ -21,6 +22,7 @@ const emptyForm = {
 
 function FarmPlots() {
   const navigate = useNavigate();
+  const { ask } = useAutomation();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState(() => {
@@ -90,15 +92,28 @@ function FarmPlots() {
       crop_type_id: Number(formData.crop_type_id),
       harvest_quantity_kg: formData.harvest_quantity_kg === '' ? null : Number(formData.harvest_quantity_kg),
     };
+    const previous = plots.find((plot) => plot.id === editingPlot);
+    const crop = references.cropTypes.find((item) => item.id === payload.crop_type_id);
+    const choices = {};
+    if (!editingPlot && ['nursery', 'bushed', 'harvested'].includes(payload.status)) {
+      const mode = await ask('cycle_tasks', `รอบปลูกใหม่ ${crop?.name || ''}`);
+      if (!mode) return;
+      choices.create_tasks = mode === 'auto';
+    }
+    if (crop?.product_id && payload.harvest_quantity_kg > 0 && payload.harvest_quantity_kg !== previous?.harvest_quantity_kg) {
+      const mode = await ask('harvest_stock', `${crop.name} ${payload.harvest_quantity_kg} กก.`);
+      if (!mode) return;
+      choices.record_harvest_stock = mode === 'auto';
+    }
     try {
       if (editingPlot) {
         await api(`/crop-cycles/${editingPlot}`, {
           method: 'PATCH',
-          body: JSON.stringify({ status: payload.status, nursery_start: payload.nursery_start, harvest_quantity_kg: payload.harvest_quantity_kg }),
+          body: JSON.stringify({ status: payload.status, nursery_start: payload.nursery_start, harvest_quantity_kg: payload.harvest_quantity_kg, ...choices }),
         });
         showToast('แก้ไขแปลงสำเร็จ');
       } else {
-        await api('/crop-cycles', { method: 'POST', body: JSON.stringify(payload) });
+        await api('/crop-cycles', { method: 'POST', body: JSON.stringify({ ...payload, ...choices }) });
         showToast('เพิ่มแปลงเพาะปลูกสำเร็จ');
       }
       await loadData();

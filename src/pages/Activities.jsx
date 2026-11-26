@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Clock3, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { api, getRole } from '../lib/api';
 import { formatThaiDate, getLocalDateString, getRelativeDayLabel } from '../utils/dateUtils';
+import PlantingPrompt from '../components/PlantingPrompt';
 import ThaiDateInput from '../components/ThaiDateInput';
 
 const emptyForm = () => ({ title: '', due_date: getLocalDateString(), cycle_id: '' });
@@ -17,6 +18,7 @@ function Activities() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [plantingLineId, setPlantingLineId] = useState(null);
   const isOwner = getRole() === 'owner';
 
   const loadData = async (searchText = search, statusFilter = filter) => {
@@ -91,6 +93,7 @@ function Activities() {
     try {
       const updated = await api(`/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) });
       setTasks((current) => current.map((item) => item.id === task.id ? updated : item));
+      if (updated.planting_ready) setPlantingLineId(updated.order_line_id);
     } catch (error) {
       setMessage(error.message);
     }
@@ -179,6 +182,7 @@ function Activities() {
                       <Clock3 size={14} /> <span>{formatThaiDate(task.due_date)} · {dueLabel}</span>
                     </div>
                     <div className="flex items-center gap-1">
+                      {task.planting_ready && <button onClick={() => setPlantingLineId(task.order_line_id)} className="whitespace-nowrap rounded-lg px-2 py-1 text-xs font-semibold text-farm-700 hover:bg-farm-50">สร้างรอบปลูก</button>}
                       {!task.is_masked && <button onClick={() => openEditForm(task)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="แก้ไขงาน" aria-label="แก้ไขงาน"><Pencil size={15} /></button>}
                       <button onClick={() => deleteTask(task)} className="rounded-lg p-2 text-rose-500 hover:bg-rose-50" title="ลบงาน" aria-label="ลบงาน"><Trash2 size={15} /></button>
                     </div>
@@ -189,6 +193,12 @@ function Activities() {
           </div>
         )}
       </section>
+
+      <PlantingPrompt
+        lineId={plantingLineId}
+        onClose={() => setPlantingLineId(null)}
+        onCreated={async (count) => { setPlantingLineId(null); await loadData(); setMessage(`สร้างรอบปลูก ${count} รอบแล้ว`); }}
+      />
     </div>
   );
 }

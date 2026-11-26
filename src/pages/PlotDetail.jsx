@@ -2,14 +2,35 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Plus, Sprout, Trash2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import AutocompleteInput from '../components/AutocompleteInput';
+import { useAutomation } from '../components/AutomationPrompt';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
 import ThaiDateInput from '../components/ThaiDateInput';
 import { cropCycleStatusLabels } from '../constants/cropCycleStatus';
 import { api } from '../lib/api';
+import { fetchAll } from '../lib/lookups';
+import { itemName } from '../utils/itemCategories';
 import { formatThaiDate, formatThaiDateTime } from '../utils/dateUtils';
 
+// Stock source of a mixed item: '' keeps the mapping remembered for its name.
+const stockChoice = (item) => {
+  if (!item.stock) return {};
+  return { product_id: item.stock === 'none' ? null : Number(item.stock) };
+};
+
+function StockSelect({ value, products, onChange }) {
+  return (
+    <select aria-label="ตัดสต็อกจาก" value={value || ''} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+      <option value="">ตัดสต็อกตามที่เคยเลือกไว้กับชื่อนี้</option>
+      <option value="none">ไม่ตัดสต็อก</option>
+      {products.map((product) => <option key={product.id} value={product.id}>ตัดจาก {itemName(product)} (เหลือ {product.on_hand} {product.unit})</option>)}
+    </select>
+  );
+}
+
 function PlotDetail() {
+  const { ask } = useAutomation();
+  const [stockItems, setStockItems] = useState([]);
   const { id } = useParams();
   const [plot, setPlot] = useState(null);
   const [harvestQuantity, setHarvestQuantity] = useState('');
@@ -40,6 +61,22 @@ function PlotDetail() {
     note: '',
     items: [],
   });
+
+  useEffect(() => {
+    fetchAll('/products')
+      .then((items) => setStockItems(items.filter((item) => item.is_active !== false && item.category !== 'vegetable')))
+      .catch(() => {});
+  }, []);
+
+  const stockFields = (item, productId) => {
+    const product = stockItems.find((entry) => String(entry.id) === productId);
+    if (!product) return { stock: productId };
+    return {
+      stock: productId,
+      unit: product.unit,
+      ...(item.item_name || product.is_masked ? {} : { item_name: product.name }),
+    };
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -76,11 +113,18 @@ function PlotDetail() {
 
   const saveHarvestQuantity = async () => {
     if (!plot) return;
+    const quantity = harvestQuantity === '' ? null : Number(harvestQuantity);
+    const choices = {};
+    if (plot.crop_type.product_id && quantity > 0) {
+      const mode = await ask('harvest_stock', `${plot.crop_type.name} ${quantity} กก.`);
+      if (!mode) return;
+      choices.record_harvest_stock = mode === 'auto';
+    }
     setIsSavingHarvestQuantity(true);
     try {
       const updated = await api(`/crop-cycles/${plot.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ harvest_quantity_kg: harvestQuantity === '' ? null : Number(harvestQuantity) }),
+        body: JSON.stringify({ harvest_quantity_kg: quantity, ...choices }),
       });
       setPlot(updated);
     } catch (requestError) {
@@ -130,6 +174,7 @@ function PlotDetail() {
           item_name: item.item_name.trim(),
           quantity: Number(item.quantity || 0),
           unit: item.unit.trim(),
+          ...stockChoice(item),
         })),
     };
 
@@ -180,6 +225,7 @@ function PlotDetail() {
       category: application.category || '',
       note: application.note || '',
       items: (application.items || []).map((item) => ({
+        stock: item.product_id ? String(item.product_id) : 'none',
         item_name: item.item_name,
         quantity: item.quantity,
         unit: item.unit || '',
@@ -217,6 +263,7 @@ function PlotDetail() {
         item_name: item.item_name.trim(),
         quantity: Number(item.quantity || 0),
         unit: item.unit.trim(),
+        ...stockChoice(item),
       }));
 
     if (!validItems.length) {
@@ -293,6 +340,9 @@ function PlotDetail() {
         >
           <Trash2 size={16} />
         </button>
+      </div>
+      <div className="col-span-full">
+        <StockSelect value={item.stock} products={stockItems} onChange={(value) => setForm((current) => ({ ...current, items: current.items.map((row, i) => (i === index ? { ...row, ...stockFields(row, value) } : row)) }))} />
       </div>
     </div>
   );
@@ -638,6 +688,9 @@ function PlotDetail() {
                   >
                     <Trash2 size={14} />
                   </button>
+                  <div className="col-span-full">
+                    <StockSelect value={item.stock} products={stockItems} onChange={(value) => setEditForm((current) => ({ ...current, items: current.items.map((row, i) => (i === idx ? { ...row, ...stockFields(row, value) } : row)) }))} />
+                  </div>
                 </div>
               ))}
             </div>

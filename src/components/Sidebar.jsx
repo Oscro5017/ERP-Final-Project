@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
   Boxes,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   CloudSun,
   LayoutDashboard,
   Lightbulb,
+  Settings,
   Sprout,
   Users,
   Wallet,
@@ -25,13 +25,15 @@ const navigationGroups = [
     { name: 'พยากรณ์', to: '/weather#forecast' },
     { name: 'บันทึกย้อนหลัง', to: '/weather#history' },
   ] },
-  { id: 'products', name: 'สินค้า & คลัง', icon: Boxes, children: [
-    { name: 'สินค้า', to: '/products' },
-    { name: 'คลังสินค้า', to: '/stock' },
+  { id: 'warehouse', name: 'คลัง', icon: Boxes, children: [
+    { name: 'รายการของ', to: '/warehouse/items' },
+    { name: 'ของสด', to: '/warehouse/fresh' },
+    { name: 'รับเข้า-ส่งออก', to: '/warehouse/documents' },
+    { name: 'ประวัติ', to: '/warehouse/history' },
   ] },
-  { id: 'trade', name: 'รับเข้า / ส่งออก', icon: ArrowDownToLine, children: [
-    { name: 'รับเข้า', to: '/trade' },
-    { name: 'ส่งออก', to: '/trade', icon: ArrowUpFromLine },
+  { id: 'sales', name: 'การขาย', icon: ClipboardList, children: [
+    { name: 'ออเดอร์', to: '/sales/orders' },
+    { name: 'รายการขาย', to: '/sales/list' },
   ] },
   { id: 'finance', name: 'การเงิน', icon: Wallet, children: [
     { name: 'ภาพรวม', to: '/finance' },
@@ -43,6 +45,9 @@ const navigationGroups = [
   ] },
   { id: 'insights', name: 'ข้อมูลเชิงลึก', icon: Lightbulb, children: [
     { name: 'คำแนะนำ', to: '/insights' },
+  ] },
+  { id: 'settings', name: 'ตั้งค่า', icon: Settings, children: [
+    { name: 'การทำงานอัตโนมัติ', to: '/settings' },
   ] },
 ];
 
