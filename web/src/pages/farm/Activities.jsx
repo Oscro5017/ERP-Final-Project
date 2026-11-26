@@ -164,7 +164,8 @@ function Activities() {
         ) : (
           <div className="divide-y divide-slate-100">
             {visibleTasks.map((task) => {
-              const dueLabel = getRelativeDayLabel(task.due_date);
+              // A finished task is not late, however old its due date is.
+              const dueLabel = task.status === 'done' ? 'เสร็จแล้ว' : getRelativeDayLabel(task.due_date);
               const isOverdue = task.status === 'pending' && dueLabel.startsWith('เกินกำหนด');
               return (
                 <article key={task.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
