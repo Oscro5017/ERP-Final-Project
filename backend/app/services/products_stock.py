@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
@@ -10,6 +10,19 @@ from .secure_fields import encrypt_text, safe_decrypt_text
 
 _Q = Decimal("0.001")
 _BANGKOK = ZoneInfo("Asia/Bangkok")
+
+
+def start_of_day(day: date) -> datetime:
+    """Farm-local midnight of a date, in UTC: the time given to stock moved on a stated day."""
+    return datetime.combine(day, time.min, tzinfo=_BANGKOK).astimezone(UTC)
+
+
+def same_moment(first: datetime, second: datetime) -> bool:
+    # SQLite returns naive UTC values, so compare both as naive UTC.
+    def naive(value: datetime) -> datetime:
+        return value.astimezone(UTC).replace(tzinfo=None) if value.tzinfo else value
+
+    return naive(first) == naive(second)
 _UNIT_ALIASES = {
     "kg": ("mass", Decimal("1")), "กก.": ("mass", Decimal("1")), "กิโลกรัม": ("mass", Decimal("1")),
     "g": ("mass", Decimal("0.001")), "กรัม": ("mass", Decimal("0.001")),

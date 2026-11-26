@@ -17,7 +17,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.input_catalog import suggest_input_catalog_with_status, upsert_input_catalog
-from ..services.input_stock import sync_input_application_stock, validate_input_product
+from ..services.input_stock import move_input_application_stock_date, sync_input_application_stock, validate_input_product
 from ..services.products_stock import void_source_movements
 from ..services.source_types import INPUT_APPLICATION
 from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe
@@ -185,6 +185,8 @@ def update_input_application(application_id: int, payload: InputApplicationUpdat
         warnings = sync_input_application_stock(db, application, movement_items)
     else:
         warnings = []
+        if payload.applied_date is not None:
+            move_input_application_stock_date(db, application)
 
     db.commit()
     query = active_rows(select(InputApplication).where(InputApplication.id == application.id), InputApplication)

@@ -263,3 +263,30 @@ def test_preferences_reject_unknown_values(env):
 
 def test_outbound_rejects_order_purpose_without_an_order(env):
     env.outbound(purpose="order", status=422)
+
+
+def balance_on(env, product, offset):
+    items = env.get(f"/stock/balances?product_id={product}&as_of={day(offset)}")["items"]
+    return items[0]["quantity"] if items else 0
+
+
+def test_harvest_counts_on_its_harvest_date(env):
+    path = f"/crop-cycles/{env.cycle(-50)['id']}"
+    env.patch(path, {"status": "harvested", "harvest_date": day(-5), "harvest_quantity_kg": 8})
+    assert balance_on(env, env.product, -6) == 0
+    assert balance_on(env, env.product, -5) == 8
+    env.patch(path, {"harvest_date": day(-3)})
+    assert balance_on(env, env.product, -4) == 0 and balance_on(env, env.product, -3) == 8
+    assert env.balance() == 8
+
+
+def test_input_use_counts_on_its_applied_date(env):
+    fertiliser = env.post("/products", {"category": "fertilizer", "name": "ปุ๋ย A", "unit": "kg"})["id"]
+    env.post("/trade/inbound", {"doc_date": day(-30), "lines": [{"product_id": fertiliser, "quantity": 10}]})
+    cycle = env.cycle(-20)["id"]
+    application = env.post(f"/crop-cycles/{cycle}/input-applications", {
+        "applied_date": day(-7), "category": "ปุ๋ย",
+        "items": [{"item_name": "ปุ๋ย A", "quantity": 2, "unit": "kg", "product_id": fertiliser}]})
+    assert balance_on(env, fertiliser, -8) == 10 and balance_on(env, fertiliser, -7) == 8
+    env.patch(f"/input-applications/{application['id']}", {"applied_date": day(-2)})
+    assert balance_on(env, fertiliser, -3) == 10 and balance_on(env, fertiliser, -2) == 8

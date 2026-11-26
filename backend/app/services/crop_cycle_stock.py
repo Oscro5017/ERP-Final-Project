@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..models import CropCycle, CropType, Product, StockMovement
 from .crop_cycle_options import cycle_option
-from .products_stock import convert_quantity, record_movement, void_source_movements
+from .products_stock import convert_quantity, record_movement, same_moment, start_of_day, void_source_movements
 from .source_types import CROP_CYCLE_HARVEST
 
 _KG_UNITS = {"kg", "กก.", "กิโลกรัม"}
@@ -53,9 +53,14 @@ def sync_crop_cycle_harvest_stock(db: Session, cycle: CropCycle) -> list[str]:
             void_source_movements(db, CROP_CYCLE_HARVEST, cycle.id)
         return [f"unit_mismatch:{product.id}"]
 
+    # The harvest enters stock on its harvest date, so balances on earlier dates do not include it.
+    harvested_at = start_of_day(cycle.harvest_date) if cycle.harvest_date else None
     if len(current) == 1:
         movement = current[0]
-        if movement.product_id == product.id and movement.movement_type == "receipt" and movement.quantity_delta == normalized:
+        if (
+            movement.product_id == product.id and movement.movement_type == "receipt" and movement.quantity_delta == normalized
+            and (harvested_at is None or same_moment(movement.occurred_at, harvested_at))
+        ):
             return []
 
     if current:
@@ -68,5 +73,6 @@ def sync_crop_cycle_harvest_stock(db: Session, cycle: CropCycle) -> list[str]:
         "receipt",
         source_type=CROP_CYCLE_HARVEST,
         source_id=cycle.id,
+        occurred_at=harvested_at,
     )
     return []

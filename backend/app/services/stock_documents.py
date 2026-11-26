@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, date, datetime, timedelta, time
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
@@ -24,7 +24,7 @@ from ..models import (
 from ..schemas import InboundDocumentCreate, OutboundDocumentCreate
 from .finance_entries import document_finance_entry
 from .freshness import expired_lot_warnings
-from .products_stock import convert_quantity, on_hand_grouped, record_movement, void_source_movements
+from .products_stock import convert_quantity, on_hand_grouped, record_movement, start_of_day, void_source_movements
 from .secure_fields import (
     encrypt_number,
     encrypt_text,
@@ -55,10 +55,6 @@ def _document_date(value: date | None) -> date:
     if result > upper_bound:
         raise ValueError("Document date is too far in the future")
     return result
-
-
-def _occurred_at(doc_date: date) -> datetime:
-    return datetime.combine(doc_date, time.min, tzinfo=_BANGKOK).astimezone(UTC)
 
 
 def _money(value: Decimal | None) -> Decimal | None:
@@ -202,7 +198,7 @@ def create_stock_document(db: Session, doc_type: str, payload, created_by: int |
             movement_type,
             source_type=STOCK_DOCUMENT,
             source_id=document.id,
-            occurred_at=_occurred_at(doc_date),
+            occurred_at=start_of_day(doc_date),
         )
     db.flush()
     if doc_type == "outbound":

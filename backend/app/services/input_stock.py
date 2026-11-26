@@ -1,7 +1,8 @@
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from ..models import InputApplication, InputItem, Product
-from .products_stock import record_movement, void_source_movements
+from ..models import InputApplication, InputItem, Product, StockMovement
+from .products_stock import record_movement, start_of_day, void_source_movements
 from .source_types import INPUT_APPLICATION
 
 
@@ -37,6 +38,7 @@ def sync_input_application_stock(
                 "application",
                 source_type=INPUT_APPLICATION,
                 source_id=application.id,
+                occurred_at=start_of_day(application.applied_date),
             )
         except ValueError as exc:
             if str(exc) == "Invalid quantity or unit":
@@ -44,3 +46,12 @@ def sync_input_application_stock(
                 continue
             raise
     return sorted(warnings)
+
+
+def move_input_application_stock_date(db: Session, application: InputApplication) -> None:
+    """Keep an application's stock deductions on its applied date after the date is edited."""
+    db.execute(update(StockMovement).where(
+        StockMovement.source_type == INPUT_APPLICATION,
+        StockMovement.source_id == application.id,
+        StockMovement.voided_at.is_(None),
+    ).values(occurred_at=start_of_day(application.applied_date)))
