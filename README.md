@@ -99,6 +99,18 @@ npm test                                  # Vitest: forms, units, formatting
 When you add a backend router, also add its first path segment to
 `apiPrefixes` in `web/vite.config.js`; a backend test fails until you do.
 
+## Push notifications (optional)
+
+Every morning at 08:00 (`NOTIFY_HOUR`, `NOTIFY_MINUTE`) the backend stores
+reminders for planned activities due today or in `NOTIFY_LEAD_DAYS` days and for
+fresh lots about to expire. The app shows them at `/notifications`.
+
+To also push them to the owner's Android phone, create a Firebase project, add
+the Android app (`mobile/`), download a service-account key, store it outside git
+(for example `secrets/firebase.json`, which is ignored) and set
+`FCM_CREDENTIALS_FILE` in `.env`. The Pi then needs outbound internet only. Each
+push is only a count of reminders; the details stay on the Pi.
+
 ## Raspberry Pi deployment
 
 The built web app is no longer committed, so build it before starting the

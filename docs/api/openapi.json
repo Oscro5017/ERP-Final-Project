@@ -76,6 +76,94 @@
         ]
       }
     },
+    "/tables/board": {
+      "get": {
+        "tags": [
+          "reference"
+        ],
+        "summary": "Table Board",
+        "description": "Every table: what grows on it, how many plants, its stage, and the room left.",
+        "operationId": "table_board_tables_board_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableBoardResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Table Board Tables Board Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/tables/{table_id}": {
+      "patch": {
+        "tags": [
+          "reference"
+        ],
+        "summary": "Update Table",
+        "operationId": "update_table_tables__table_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "table_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Table Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/batches": {
       "get": {
         "tags": [
@@ -165,6 +253,64 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CropTypeProductMappingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crop-types/{crop_type_id}": {
+      "patch": {
+        "tags": [
+          "reference"
+        ],
+        "summary": "Update Crop Type",
+        "description": "Stage lengths and the seed item; cycles still growing follow the new lengths.",
+        "operationId": "update_crop_type_crop_types__crop_type_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "crop_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Crop Type Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CropTypeUpdate"
               }
             }
           }
@@ -362,6 +508,210 @@
         }
       }
     },
+    "/crop-cycles/{cycle_id}/status": {
+      "post": {
+        "tags": [
+          "crop cycles"
+        ],
+        "summary": "Change Cycle Status",
+        "description": "Move a cycle to a stage straight from a list, with only what that stage needs.",
+        "operationId": "change_cycle_status_crop_cycles__cycle_id__status_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cycle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CropCycleStatusChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropCycleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crop-cycles/{cycle_id}/harvests": {
+      "get": {
+        "tags": [
+          "crop cycles"
+        ],
+        "summary": "List Harvests",
+        "operationId": "list_harvests_crop_cycles__cycle_id__harvests_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cycle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HarvestEntryResponse"
+                  },
+                  "title": "Response List Harvests Crop Cycles  Cycle Id  Harvests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crop cycles"
+        ],
+        "summary": "Add Harvest",
+        "operationId": "add_harvest_crop_cycles__cycle_id__harvests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cycle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HarvestEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CropCycleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crop-cycles/harvests/{entry_id}": {
+      "delete": {
+        "tags": [
+          "crop cycles"
+        ],
+        "summary": "Remove Harvest",
+        "operationId": "remove_harvest_crop_cycles_harvests__entry_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/crop-cycles/{cycle_id}/status-log": {
       "get": {
         "tags": [
@@ -396,6 +746,57 @@
                     "$ref": "#/components/schemas/CropCycleStatusLogResponse"
                   },
                   "title": "Response List Cycle Status Log Crop Cycles  Cycle Id  Status Log Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crop-cycles/{cycle_id}/changes": {
+      "get": {
+        "tags": [
+          "crop cycles"
+        ],
+        "summary": "List Cycle Changes",
+        "operationId": "list_cycle_changes_crop_cycles__cycle_id__changes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cycle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeNoteResponse"
+                  },
+                  "title": "Response List Cycle Changes Crop Cycles  Cycle Id  Changes Get"
                 }
               }
             }
@@ -1237,6 +1638,384 @@
         }
       }
     },
+    "/freshness/lots": {
+      "get": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "List Lots",
+        "operationId": "list_lots_freshness_lots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "include_empty",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Empty"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreshnessOverviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freshness/products/{product_id}": {
+      "put": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "Set Shelf Life",
+        "operationId": "set_shelf_life_freshness_products__product_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShelfLifeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelfLifeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "Remove Shelf Life",
+        "operationId": "remove_shelf_life_freshness_products__product_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freshness/products/{product_id}/lots/{lot_key}/expiry": {
+      "put": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "Set Lot Expiry",
+        "operationId": "set_lot_expiry_freshness_products__product_id__lots__lot_key__expiry_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "lot_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lot Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotExpiryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreshnessOverviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freshness/waste": {
+      "get": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "List Waste",
+        "operationId": "list_waste_freshness_waste_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockWasteListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "Create Waste",
+        "operationId": "create_waste_freshness_waste_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockWasteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockWasteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freshness/waste/{waste_id}/void": {
+      "post": {
+        "tags": [
+          "freshness"
+        ],
+        "summary": "Void Waste",
+        "operationId": "void_waste_freshness_waste__waste_id__void_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "waste_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Waste Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockWasteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/insights": {
       "get": {
         "tags": [
@@ -1432,13 +2211,13 @@
         }
       }
     },
-    "/crop-cycles/{cycle_id}/input-applications": {
+    "/activities": {
       "get": {
         "tags": [
-          "input applications"
+          "activities"
         ],
-        "summary": "List Input Applications",
-        "operationId": "list_input_applications_crop_cycles__cycle_id__input_applications_get",
+        "summary": "List Activities",
+        "operationId": "list_activities_activities_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1446,12 +2225,101 @@
         ],
         "parameters": [
           {
-            "name": "cycle_id",
-            "in": "path",
-            "required": true,
+            "name": "kind",
+            "in": "query",
+            "required": false,
             "schema": {
-              "type": "integer",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "cycle_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Cycle Id"
+            }
+          },
+          {
+            "name": "table_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Table Id"
             }
           }
         ],
@@ -1463,9 +2331,9 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/InputApplicationResponse"
+                    "$ref": "#/components/schemas/ActivityResponse"
                   },
-                  "title": "Response List Input Applications Crop Cycles  Cycle Id  Input Applications Get"
+                  "title": "Response List Activities Activities Get"
                 }
               }
             }
@@ -1484,24 +2352,13 @@
       },
       "post": {
         "tags": [
-          "input applications"
+          "activities"
         ],
-        "summary": "Create Input Application",
-        "operationId": "create_input_application_crop_cycles__cycle_id__input_applications_post",
+        "summary": "Create Activity",
+        "operationId": "create_activity_activities_post",
         "security": [
           {
             "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cycle_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Cycle Id"
-            }
           }
         ],
         "requestBody": {
@@ -1509,7 +2366,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InputApplicationCreate"
+                "$ref": "#/components/schemas/ActivityCreate"
               }
             }
           }
@@ -1520,7 +2377,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InputApplicationResponse"
+                  "$ref": "#/components/schemas/ActivityResponse"
                 }
               }
             }
@@ -1538,13 +2395,13 @@
         }
       }
     },
-    "/input-applications/{application_id}": {
-      "patch": {
+    "/activities/{activity_id}": {
+      "get": {
         "tags": [
-          "input applications"
+          "activities"
         ],
-        "summary": "Update Input Application",
-        "operationId": "update_input_application_input_applications__application_id__patch",
+        "summary": "Get Activity",
+        "operationId": "get_activity_activities__activity_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -1552,12 +2409,57 @@
         ],
         "parameters": [
           {
-            "name": "application_id",
+            "name": "activity_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Application Id"
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "Update Activity",
+        "operationId": "update_activity_activities__activity_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Activity Id"
             }
           }
         ],
@@ -1566,7 +2468,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InputApplicationUpdate"
+                "$ref": "#/components/schemas/ActivityUpdate"
               }
             }
           }
@@ -1577,7 +2479,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InputApplicationResponse"
+                  "$ref": "#/components/schemas/ActivityResponse"
                 }
               }
             }
@@ -1596,10 +2498,10 @@
       },
       "delete": {
         "tags": [
-          "input applications"
+          "activities"
         ],
-        "summary": "Delete Input Application",
-        "operationId": "delete_input_application_input_applications__application_id__delete",
+        "summary": "Remove Activity",
+        "operationId": "remove_activity_activities__activity_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -1607,12 +2509,12 @@
         ],
         "parameters": [
           {
-            "name": "application_id",
+            "name": "activity_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Application Id"
+              "title": "Activity Id"
             }
           }
         ],
@@ -1633,10 +2535,118 @@
         }
       }
     },
+    "/activities/{activity_id}/status": {
+      "post": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "Change Activity Status",
+        "operationId": "change_activity_status_activities__activity_id__status_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityStatusChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/activities/{activity_id}/changes": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "List Activity Changes",
+        "operationId": "list_activity_changes_activities__activity_id__changes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeNoteResponse"
+                  },
+                  "title": "Response List Activity Changes Activities  Activity Id  Changes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/input-catalog/suggestions": {
       "get": {
         "tags": [
-          "input applications"
+          "activities"
         ],
         "summary": "Get Input Catalog Suggestions",
         "operationId": "get_input_catalog_suggestions_input_catalog_suggestions_get",
@@ -1679,6 +2689,358 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "List Notifications",
+        "operationId": "list_notifications_notifications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unread",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Unread"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationResponse"
+                  },
+                  "title": "Response List Notifications Notifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark Read",
+        "operationId": "mark_read_notifications__notification_id__read_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark All Read",
+        "operationId": "mark_all_read_notifications_read_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/push-devices": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Add Push Device",
+        "description": "The phone app sends its Firebase token after login.",
+        "operationId": "add_push_device_push_devices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDeviceRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/push-devices/remove": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Remove Push Device",
+        "description": "Called on logout so the phone stops receiving pushes.",
+        "operationId": "remove_push_device_push_devices_remove_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDeviceRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/preferences/automation": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "List Automation",
+        "operationId": "list_automation_preferences_automation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response List Automation Preferences Automation Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/preferences/automation/{key}": {
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Set Automation",
+        "operationId": "set_automation_preferences_automation__key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "order_planting",
+                "planting_cycles",
+                "cycle_tasks",
+                "harvest_stock",
+                "order_fill",
+                "outbound_finance",
+                "inbound_finance",
+                "order_close",
+                "seed_stock",
+                "auto_stage"
+              ],
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationPreferenceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Clear Automation",
+        "operationId": "clear_automation_preferences_automation__key__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "order_planting",
+                "planting_cycles",
+                "cycle_tasks",
+                "harvest_stock",
+                "order_fill",
+                "outbound_finance",
+                "inbound_finance",
+                "order_close",
+                "seed_stock",
+                "auto_stage"
+              ],
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -2050,6 +3412,446 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-orders": {
+      "get": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "List Orders",
+        "operationId": "list_orders_sales_orders_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(open|delivered|cancelled)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Create Order",
+        "operationId": "create_order_sales_orders_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-orders/{order_id}": {
+      "get": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Get Order",
+        "operationId": "get_order_sales_orders__order_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Update Order",
+        "operationId": "update_order_sales_orders__order_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-orders/{order_id}/close": {
+      "post": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Close Order",
+        "operationId": "close_order_sales_orders__order_id__close_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderClose"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-orders/{order_id}/deliver": {
+      "post": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Deliver Order",
+        "operationId": "deliver_order_sales_orders__order_id__deliver_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderDeliver"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderDeliverResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-orders/lines/{line_id}/planting": {
+      "get": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Get Planting",
+        "operationId": "get_planting_sales_orders_lines__line_id__planting_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantingProposalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sales orders"
+        ],
+        "summary": "Create Planting",
+        "operationId": "create_planting_sales_orders_lines__line_id__planting_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlantingCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantingCreateResponse"
                 }
               }
             }
@@ -2828,6 +4630,16 @@
             }
           },
           {
+            "name": "sales_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Sales Only"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -2858,6 +4670,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StockDocumentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trade/last-prices": {
+      "get": {
+        "tags": [
+          "trade documents"
+        ],
+        "summary": "List Last Prices",
+        "operationId": "list_last_prices_trade_last_prices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(inbound|outbound)$",
+              "default": "outbound",
+              "title": "Doc Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LastPriceResponse"
+                  },
+                  "title": "Response List Last Prices Trade Last Prices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trade/documents/{document_id}/finance": {
+      "post": {
+        "tags": [
+          "trade documents"
+        ],
+        "summary": "Record Document Finance",
+        "operationId": "record_document_finance_trade_documents__document_id__finance_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockDocumentResponse"
                 }
               }
             }
@@ -3602,6 +5514,786 @@
   },
   "components": {
     "schemas": {
+      "ActivityCreate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fertilize",
+              "spray",
+              "cleanup",
+              "general"
+            ],
+            "title": "Kind",
+            "default": "general"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "done"
+            ],
+            "title": "Status",
+            "default": "done"
+          },
+          "planned_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Date"
+          },
+          "done_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done On"
+          },
+          "cycle_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Cycle Ids"
+          },
+          "table_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Table Ids"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityShareInput"
+            },
+            "type": "array",
+            "title": "Shares"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItemInput"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "remind": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remind"
+          },
+          "labor_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labor Cost"
+          },
+          "worker_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Count"
+          },
+          "extra_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Cost"
+          }
+        },
+        "type": "object",
+        "title": "ActivityCreate"
+      },
+      "ActivityItemInput": {
+        "properties": {
+          "item_name": {
+            "type": "string",
+            "maxLength": 140,
+            "minLength": 1,
+            "title": "Item Name"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Unit",
+            "default": ""
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_name",
+          "quantity"
+        ],
+        "title": "ActivityItemInput"
+      },
+      "ActivityItemResponse": {
+        "properties": {
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed",
+            "default": false
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_name",
+          "quantity",
+          "unit"
+        ],
+        "title": "ActivityItemResponse"
+      },
+      "ActivityResponse": {
+        "properties": {
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed",
+            "default": false
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "planned_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Planned Date"
+          },
+          "started_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started On"
+          },
+          "done_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done On"
+          },
+          "remind": {
+            "type": "boolean",
+            "title": "Remind"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "labor_cost": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labor Cost"
+          },
+          "worker_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Count"
+          },
+          "extra_cost": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Cost"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityTargetResponse"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "order_line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Line Id"
+          },
+          "planting_ready": {
+            "type": "boolean",
+            "title": "Planting Ready",
+            "default": false
+          },
+          "stock_alert_product_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Alert Product Id"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status",
+          "source",
+          "planned_date",
+          "remind",
+          "targets",
+          "items",
+          "is_masked",
+          "created_at"
+        ],
+        "title": "ActivityResponse"
+      },
+      "ActivityShareInput": {
+        "properties": {
+          "crop_cycle_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Crop Cycle Id"
+          },
+          "share": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Share"
+          }
+        },
+        "type": "object",
+        "required": [
+          "crop_cycle_id",
+          "share"
+        ],
+        "title": "ActivityShareInput"
+      },
+      "ActivityStatusChange": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "done"
+            ],
+            "title": "Status"
+          },
+          "on_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Date"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ActivityStatusChange"
+      },
+      "ActivityTargetResponse": {
+        "properties": {
+          "crop_cycle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Cycle Id"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          },
+          "table_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Number"
+          },
+          "cycle_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Code"
+          },
+          "crop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Name"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "share_is_manual": {
+            "type": "boolean",
+            "title": "Share Is Manual",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ActivityTargetResponse"
+      },
+      "ActivityUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "planned_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Date"
+          },
+          "done_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done On"
+          },
+          "cycle_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Ids"
+          },
+          "table_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Ids"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActivityShareInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActivityItemInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "remind": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remind"
+          },
+          "labor_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labor Cost"
+          },
+          "worker_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Count"
+          },
+          "extra_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Cost"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "ActivityUpdate"
+      },
+      "AutomationPreferenceUpdate": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "manual"
+            ],
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "AutomationPreferenceUpdate"
+      },
       "BatchResponse": {
         "properties": {
           "id": {
@@ -3630,6 +6322,95 @@
           "week_offset"
         ],
         "title": "BatchResponse"
+      },
+      "ChangeNoteResponse": {
+        "properties": {
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed",
+            "default": false
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "old_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Value"
+          },
+          "new_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "auto_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Note"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "field",
+          "created_at",
+          "is_masked"
+        ],
+        "title": "ChangeNoteResponse"
       },
       "CropCycleCreate": {
         "properties": {
@@ -3689,6 +6470,81 @@
           "status": {
             "$ref": "#/components/schemas/CycleStatus",
             "default": "nursery"
+          },
+          "seed_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Count"
+          },
+          "plant_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant Count"
+          },
+          "expected_transplant_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Transplant On"
+          },
+          "expected_ready_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ready On"
+          },
+          "create_tasks": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Create Tasks"
+          },
+          "record_harvest_stock": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Harvest Stock"
+          },
+          "deduct_seeds": {
+            "type": "boolean",
+            "title": "Deduct Seeds",
+            "default": true
           }
         },
         "type": "object",
@@ -3759,6 +6615,54 @@
             "$ref": "#/components/schemas/CycleStatus",
             "default": "nursery"
           },
+          "seed_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Count"
+          },
+          "plant_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant Count"
+          },
+          "expected_transplant_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Transplant On"
+          },
+          "expected_ready_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ready On"
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -3797,6 +6701,67 @@
           "crop_type"
         ],
         "title": "CropCycleResponse"
+      },
+      "CropCycleStatusChange": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/CycleStatus"
+          },
+          "on_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Date"
+          },
+          "plant_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant Count"
+          },
+          "quantity_kg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity Kg"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "CropCycleStatusChange",
+        "description": "Change the stage from a list in one step, giving only what that stage needs."
       },
       "CropCycleStatusLogResponse": {
         "properties": {
@@ -3840,6 +6805,28 @@
       },
       "CropCycleUpdate": {
         "properties": {
+          "create_tasks": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Create Tasks"
+          },
+          "record_harvest_stock": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Harvest Stock"
+          },
           "status": {
             "anyOf": [
               {
@@ -3897,6 +6884,77 @@
               }
             ],
             "title": "Harvest Quantity Kg"
+          },
+          "seed_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Count"
+          },
+          "plant_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant Count"
+          },
+          "expected_transplant_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Transplant On"
+          },
+          "expected_ready_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ready On"
+          },
+          "deduct_seeds": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deduct Seeds"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
           }
         },
         "type": "object",
@@ -3950,6 +7008,17 @@
             ],
             "title": "Product Id"
           },
+          "seed_product_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Product Id"
+          },
           "warnings": {
             "items": {
               "type": "string"
@@ -3966,6 +7035,51 @@
           "growth_days"
         ],
         "title": "CropTypeResponse"
+      },
+      "CropTypeUpdate": {
+        "properties": {
+          "nursery_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nursery Days"
+          },
+          "growth_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Days"
+          },
+          "seed_product_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed Product Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CropTypeUpdate"
       },
       "CustomerCreate": {
         "properties": {
@@ -4094,8 +7208,8 @@
           "nursery",
           "bushed",
           "ready_to_harvest",
-          "harvested",
-          "empty"
+          "harvesting",
+          "harvested"
         ],
         "title": "CycleStatus"
       },
@@ -4481,6 +7595,171 @@
         "type": "object",
         "title": "FinanceEntryVoidRequest"
       },
+      "FreshLotResponse": {
+        "properties": {
+          "lot_key": {
+            "type": "string",
+            "title": "Lot Key"
+          },
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "received_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Received On"
+          },
+          "expires_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Expires On"
+          },
+          "days_left": {
+            "type": "integer",
+            "title": "Days Left"
+          },
+          "received_quantity": {
+            "type": "number",
+            "title": "Received Quantity"
+          },
+          "remaining_quantity": {
+            "type": "number",
+            "title": "Remaining Quantity"
+          },
+          "wasted_quantity": {
+            "type": "number",
+            "title": "Wasted Quantity"
+          },
+          "expiry_overridden": {
+            "type": "boolean",
+            "title": "Expiry Overridden"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "expiring",
+              "expired",
+              "empty"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lot_key",
+          "product_id",
+          "product_name",
+          "unit",
+          "cycle_id",
+          "received_on",
+          "expires_on",
+          "days_left",
+          "received_quantity",
+          "remaining_quantity",
+          "wasted_quantity",
+          "expiry_overridden",
+          "status"
+        ],
+        "title": "FreshLotResponse"
+      },
+      "FreshProductResponse": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "shelf_life_days": {
+            "type": "integer",
+            "title": "Shelf Life Days"
+          },
+          "warn_days": {
+            "type": "integer",
+            "title": "Warn Days"
+          },
+          "uncovered_quantity": {
+            "type": "number",
+            "title": "Uncovered Quantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "product_name",
+          "unit",
+          "shelf_life_days",
+          "warn_days",
+          "uncovered_quantity"
+        ],
+        "title": "FreshProductResponse"
+      },
+      "FreshnessOverviewResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FreshLotResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/FreshProductResponse"
+            },
+            "type": "array",
+            "title": "Products"
+          },
+          "expired": {
+            "type": "integer",
+            "title": "Expired"
+          },
+          "expiring": {
+            "type": "integer",
+            "title": "Expiring"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "products",
+          "expired",
+          "expiring",
+          "is_masked"
+        ],
+        "title": "FreshnessOverviewResponse"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4494,8 +7773,120 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HarvestEntryCreate": {
+        "properties": {
+          "harvested_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harvested On"
+          },
+          "quantity_kg": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity Kg"
+          },
+          "final": {
+            "type": "boolean",
+            "title": "Final",
+            "default": false
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "quantity_kg"
+        ],
+        "title": "HarvestEntryCreate"
+      },
+      "HarvestEntryResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "crop_cycle_id": {
+            "type": "integer",
+            "title": "Crop Cycle Id"
+          },
+          "activity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Id"
+          },
+          "harvested_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Harvested On"
+          },
+          "quantity_kg": {
+            "type": "number",
+            "title": "Quantity Kg"
+          },
+          "voided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "crop_cycle_id",
+          "harvested_on",
+          "quantity_kg",
+          "created_at"
+        ],
+        "title": "HarvestEntryResponse"
+      },
       "InboundDocumentCreate": {
         "properties": {
+          "record_finance": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Finance"
+          },
           "doc_date": {
             "anyOf": [
               {
@@ -4578,170 +7969,6 @@
           "lines"
         ],
         "title": "InboundDocumentCreate"
-      },
-      "InputApplicationCreate": {
-        "properties": {
-          "applied_date": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Applied Date"
-          },
-          "category": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Category",
-            "default": ""
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/InputItemCreate"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "title": "InputApplicationCreate"
-      },
-      "InputApplicationResponse": {
-        "properties": {
-          "decrypt_failed": {
-            "type": "boolean",
-            "title": "Decrypt Failed",
-            "default": false
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "cycle_id": {
-            "type": "integer",
-            "title": "Cycle Id"
-          },
-          "applied_date": {
-            "type": "string",
-            "format": "date",
-            "title": "Applied Date"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/InputItemResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Warnings"
-          },
-          "is_masked": {
-            "type": "boolean",
-            "title": "Is Masked"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "cycle_id",
-          "applied_date",
-          "category",
-          "items",
-          "is_masked"
-        ],
-        "title": "InputApplicationResponse"
-      },
-      "InputApplicationUpdate": {
-        "properties": {
-          "applied_date": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Applied Date"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 80
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "items": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/InputItemCreate"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "title": "InputApplicationUpdate"
       },
       "InputCatalogSuggestionResponse": {
         "properties": {
@@ -4841,104 +8068,6 @@
           "is_masked"
         ],
         "title": "InputCatalogSuggestionsResponse"
-      },
-      "InputItemCreate": {
-        "properties": {
-          "item_name": {
-            "type": "string",
-            "maxLength": 140,
-            "minLength": 1,
-            "title": "Item Name"
-          },
-          "quantity": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Quantity",
-            "default": 0.0
-          },
-          "unit": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Unit",
-            "default": ""
-          },
-          "product_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Product Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "item_name"
-        ],
-        "title": "InputItemCreate"
-      },
-      "InputItemResponse": {
-        "properties": {
-          "decrypt_failed": {
-            "type": "boolean",
-            "title": "Decrypt Failed",
-            "default": false
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "item_name": {
-            "type": "string",
-            "title": "Item Name"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quantity"
-          },
-          "unit": {
-            "type": "string",
-            "title": "Unit"
-          },
-          "product_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Product Id"
-          },
-          "is_masked": {
-            "type": "boolean",
-            "title": "Is Masked"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "item_name",
-          "quantity",
-          "unit",
-          "is_masked"
-        ],
-        "title": "InputItemResponse"
       },
       "InsightResponse": {
         "properties": {
@@ -5087,6 +8216,30 @@
         ],
         "title": "InsightStatusUpdate"
       },
+      "LastPriceResponse": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "unit_price": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Unit Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "unit",
+          "unit_price"
+        ],
+        "title": "LastPriceResponse"
+      },
       "LoginRequest": {
         "properties": {
           "username": {
@@ -5105,8 +8258,159 @@
         ],
         "title": "LoginRequest"
       },
+      "LotExpiryUpdate": {
+        "properties": {
+          "expires_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Expires On"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expires_on",
+          "reason"
+        ],
+        "title": "LotExpiryUpdate"
+      },
+      "NotificationResponse": {
+        "properties": {
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed",
+            "default": false
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "activity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Id"
+          },
+          "crop_cycle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Cycle Id"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "push_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Push Error"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "scheduled_for",
+          "is_masked"
+        ],
+        "title": "NotificationResponse"
+      },
       "OutboundDocumentCreate": {
         "properties": {
+          "record_finance": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Finance"
+          },
           "doc_date": {
             "anyOf": [
               {
@@ -5176,6 +8480,21 @@
             ],
             "title": "Customer Id"
           },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sale",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
           "doc_type": {
             "type": "string",
             "const": "outbound",
@@ -5189,6 +8508,156 @@
           "lines"
         ],
         "title": "OutboundDocumentCreate"
+      },
+      "PlantingCreate": {
+        "properties": {
+          "table_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 49,
+            "minItems": 1,
+            "title": "Table Ids"
+          },
+          "nursery_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Nursery Start"
+          },
+          "create_tasks": {
+            "type": "boolean",
+            "title": "Create Tasks",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "table_ids",
+          "nursery_start"
+        ],
+        "title": "PlantingCreate"
+      },
+      "PlantingCreateResponse": {
+        "properties": {
+          "cycle_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Cycle Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cycle_ids"
+        ],
+        "title": "PlantingCreateResponse"
+      },
+      "PlantingProposalResponse": {
+        "properties": {
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "order_no": {
+            "type": "string",
+            "title": "Order No"
+          },
+          "crop_name": {
+            "type": "string",
+            "title": "Crop Name"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "to_plant": {
+            "type": "number",
+            "title": "To Plant"
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Date"
+          },
+          "nursery_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Nursery Start"
+          },
+          "expected_ready_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Expected Ready Date"
+          },
+          "is_late": {
+            "type": "boolean",
+            "title": "Is Late"
+          },
+          "tables_needed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables Needed"
+          },
+          "plants_needed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plants Needed"
+          },
+          "free_tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableResponse"
+            },
+            "type": "array",
+            "title": "Free Tables"
+          },
+          "suggested_table_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Suggested Table Ids"
+          },
+          "can_create": {
+            "type": "boolean",
+            "title": "Can Create"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "order_no",
+          "crop_name",
+          "quantity",
+          "unit",
+          "to_plant",
+          "delivery_date",
+          "nursery_start",
+          "expected_ready_date",
+          "is_late",
+          "tables_needed",
+          "free_tables",
+          "suggested_table_ids",
+          "can_create"
+        ],
+        "title": "PlantingProposalResponse"
       },
       "ProductAdjustmentCreate": {
         "properties": {
@@ -5350,6 +8819,17 @@
               }
             ],
             "title": "Source Id"
+          },
+          "source_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Label"
           },
           "occurred_at": {
             "type": "string",
@@ -5558,6 +9038,21 @@
         "type": "object",
         "title": "ProductUpdate"
       },
+      "PushDeviceRegister": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 20,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "PushDeviceRegister"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -5565,6 +9060,725 @@
           "developer"
         ],
         "title": "Role"
+      },
+      "SalesOrderClose": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "delivered",
+              "cancelled"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "SalesOrderClose"
+      },
+      "SalesOrderCreate": {
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Customer Id"
+          },
+          "order_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Date"
+          },
+          "safety_days": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Safety Days",
+            "default": 0
+          },
+          "delivery_location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Location"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "auto_planting": {
+            "type": "boolean",
+            "title": "Auto Planting",
+            "default": true
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderLineInput"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "lines"
+        ],
+        "title": "SalesOrderCreate"
+      },
+      "SalesOrderDeliver": {
+        "properties": {
+          "doc_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "record_finance": {
+            "type": "boolean",
+            "title": "Record Finance",
+            "default": true
+          },
+          "close_when_complete": {
+            "type": "boolean",
+            "title": "Close When Complete",
+            "default": true
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderDeliverLine"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "title": "SalesOrderDeliver"
+      },
+      "SalesOrderDeliverLine": {
+        "properties": {
+          "line_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Line Id"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.99,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
+          "use_order_price": {
+            "type": "boolean",
+            "title": "Use Order Price",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "quantity"
+        ],
+        "title": "SalesOrderDeliverLine"
+      },
+      "SalesOrderDeliverResponse": {
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/SalesOrderResponse"
+          },
+          "document_id": {
+            "type": "integer",
+            "title": "Document Id"
+          },
+          "doc_no": {
+            "type": "string",
+            "title": "Doc No"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order",
+          "document_id",
+          "doc_no",
+          "warnings"
+        ],
+        "title": "SalesOrderDeliverResponse"
+      },
+      "SalesOrderLineInput": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Product Id"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Date"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.99,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "quantity",
+          "delivery_date"
+        ],
+        "title": "SalesOrderLineInput"
+      },
+      "SalesOrderLineResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "crop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Name"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Date"
+          },
+          "latest_sow_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Sow Date"
+          },
+          "planting_status": {
+            "type": "string",
+            "enum": [
+              "unmapped",
+              "not_required",
+              "waiting",
+              "late",
+              "ready",
+              "planted",
+              "covered",
+              "manual",
+              "delivered"
+            ],
+            "title": "Planting Status"
+          },
+          "delivered_quantity": {
+            "type": "number",
+            "title": "Delivered Quantity"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
+          "has_price": {
+            "type": "boolean",
+            "title": "Has Price"
+          },
+          "planting_ready": {
+            "type": "boolean",
+            "title": "Planting Ready"
+          },
+          "from_stock": {
+            "type": "number",
+            "title": "From Stock"
+          },
+          "from_growing": {
+            "type": "number",
+            "title": "From Growing"
+          },
+          "to_plant": {
+            "type": "number",
+            "title": "To Plant"
+          },
+          "planting_task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planting Task Id"
+          },
+          "tables_needed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables Needed"
+          },
+          "cycle_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Cycle Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "product_id",
+          "product_name",
+          "crop_name",
+          "quantity",
+          "unit",
+          "delivery_date",
+          "latest_sow_date",
+          "planting_status",
+          "delivered_quantity",
+          "unit_price",
+          "has_price",
+          "planting_ready",
+          "from_stock",
+          "from_growing",
+          "to_plant",
+          "planting_task_id",
+          "tables_needed",
+          "cycle_ids"
+        ],
+        "title": "SalesOrderLineResponse"
+      },
+      "SalesOrderLineUpdate": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Product Id"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Date"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.99,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "quantity",
+          "delivery_date"
+        ],
+        "title": "SalesOrderLineUpdate"
+      },
+      "SalesOrderListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "SalesOrderListResponse"
+      },
+      "SalesOrderResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "order_no": {
+            "type": "string",
+            "title": "Order No"
+          },
+          "customer_id": {
+            "type": "integer",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "order_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Order Date"
+          },
+          "safety_days": {
+            "type": "integer",
+            "title": "Safety Days"
+          },
+          "delivery_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Location"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "auto_planting": {
+            "type": "boolean",
+            "title": "Auto Planting"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderLineResponse"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          },
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "order_no",
+          "customer_id",
+          "customer_name",
+          "order_date",
+          "safety_days",
+          "delivery_location",
+          "note",
+          "status",
+          "auto_planting",
+          "lines",
+          "is_masked",
+          "decrypt_failed",
+          "created_at"
+        ],
+        "title": "SalesOrderResponse"
+      },
+      "SalesOrderUpdate": {
+        "properties": {
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "safety_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 60.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Days"
+          },
+          "delivery_location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Location"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "auto_planting": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Planting"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SalesOrderLineUpdate"
+                },
+                "type": "array",
+                "maxItems": 100,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "title": "SalesOrderUpdate"
       },
       "SensorReadingInput": {
         "properties": {
@@ -5686,6 +9900,55 @@
           "readings"
         ],
         "title": "SensorReadingsCreate"
+      },
+      "ShelfLifeResponse": {
+        "properties": {
+          "shelf_life_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Shelf Life Days"
+          },
+          "warn_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Warn Days",
+            "default": 1
+          },
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shelf_life_days",
+          "product_id"
+        ],
+        "title": "ShelfLifeResponse"
+      },
+      "ShelfLifeUpdate": {
+        "properties": {
+          "shelf_life_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Shelf Life Days"
+          },
+          "warn_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Warn Days",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "shelf_life_days"
+        ],
+        "title": "ShelfLifeUpdate"
       },
       "StockBalanceListResponse": {
         "properties": {
@@ -6012,6 +10275,55 @@
             ],
             "title": "Crop Cycle Id"
           },
+          "crop_cycle_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Cycle Label"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "order_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order No"
+          },
+          "finance_recorded": {
+            "type": "boolean",
+            "title": "Finance Recorded",
+            "default": false
+          },
           "reference_no": {
             "anyOf": [
               {
@@ -6208,6 +10520,163 @@
           "total"
         ],
         "title": "StockMovementListResponse"
+      },
+      "StockWasteCreate": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Product Id"
+          },
+          "lot_key": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Lot Key"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "expired",
+              "spoiled",
+              "damaged",
+              "pest",
+              "other"
+            ],
+            "title": "Reason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "lot_key",
+          "quantity",
+          "reason"
+        ],
+        "title": "StockWasteCreate"
+      },
+      "StockWasteListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StockWasteResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "StockWasteListResponse"
+      },
+      "StockWasteResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "lot_key": {
+            "type": "string",
+            "title": "Lot Key"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "voided": {
+            "type": "boolean",
+            "title": "Voided"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "is_masked": {
+            "type": "boolean",
+            "title": "Is Masked"
+          },
+          "decrypt_failed": {
+            "type": "boolean",
+            "title": "Decrypt Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "product_id",
+          "product_name",
+          "lot_key",
+          "quantity",
+          "unit",
+          "reason",
+          "note",
+          "voided",
+          "created_at",
+          "is_masked",
+          "decrypt_failed"
+        ],
+        "title": "StockWasteResponse"
       },
       "SupplierCreate": {
         "properties": {
@@ -6421,6 +10890,129 @@
         "type": "object",
         "title": "SupplierUpdate"
       },
+      "TableBoardResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "table_number": {
+            "type": "integer",
+            "title": "Table Number"
+          },
+          "capacity_plants": {
+            "type": "integer",
+            "title": "Capacity Plants"
+          },
+          "used_plants": {
+            "type": "integer",
+            "title": "Used Plants"
+          },
+          "free_plants": {
+            "type": "integer",
+            "title": "Free Plants"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "cycles": {
+            "items": {
+              "$ref": "#/components/schemas/TableCycleResponse"
+            },
+            "type": "array",
+            "title": "Cycles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "table_number",
+          "capacity_plants",
+          "used_plants",
+          "free_plants",
+          "state",
+          "cycles"
+        ],
+        "title": "TableBoardResponse"
+      },
+      "TableCycleResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "cycle_code": {
+            "type": "string",
+            "title": "Cycle Code"
+          },
+          "crop_type_id": {
+            "type": "integer",
+            "title": "Crop Type Id"
+          },
+          "crop_name": {
+            "type": "string",
+            "title": "Crop Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "plants": {
+            "type": "integer",
+            "title": "Plants"
+          },
+          "plant_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plant Count"
+          },
+          "nursery_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Nursery Start"
+          },
+          "days_since_sowing": {
+            "type": "integer",
+            "title": "Days Since Sowing"
+          },
+          "expected_ready_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ready On"
+          },
+          "awaiting_cleanup": {
+            "type": "boolean",
+            "title": "Awaiting Cleanup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cycle_code",
+          "crop_type_id",
+          "crop_name",
+          "status",
+          "plants",
+          "nursery_start",
+          "days_since_sowing",
+          "awaiting_cleanup"
+        ],
+        "title": "TableCycleResponse"
+      },
       "TableResponse": {
         "properties": {
           "id": {
@@ -6430,6 +11022,22 @@
           "table_number": {
             "type": "integer",
             "title": "Table Number"
+          },
+          "capacity_plants": {
+            "type": "integer",
+            "title": "Capacity Plants",
+            "default": 200
+          },
+          "free_plants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Plants"
           }
         },
         "type": "object",
@@ -6438,6 +11046,22 @@
           "table_number"
         ],
         "title": "TableResponse"
+      },
+      "TableUpdate": {
+        "properties": {
+          "capacity_plants": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Capacity Plants"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capacity_plants"
+        ],
+        "title": "TableUpdate"
       },
       "TaskCreate": {
         "properties": {
@@ -6661,6 +11285,22 @@
                 "type": "null"
               }
             ]
+          },
+          "order_line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Line Id"
+          },
+          "planting_ready": {
+            "type": "boolean",
+            "title": "Planting Ready",
+            "default": false
           },
           "is_masked": {
             "type": "boolean",
