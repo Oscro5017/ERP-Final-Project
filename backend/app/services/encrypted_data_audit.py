@@ -1,5 +1,6 @@
 import base64
 import binascii
+import warnings
 from dataclasses import dataclass
 from decimal import InvalidOperation
 
@@ -66,7 +67,10 @@ def audit_encrypted_data(connection: Connection) -> list[EncryptedColumnAudit]:
         if table_name.startswith("sqlite_"):
             continue
         columns = {column["name"] for column in inspector.get_columns(table_name)}
-        table = Table(table_name, MetaData(), autoload_with=connection)
+        with warnings.catch_warnings():
+            # The finance uniqueness index uses an expression SQLAlchemy cannot reflect; the audit does not need it.
+            warnings.filterwarnings("ignore", message="Skipped unsupported reflection of expression-based index")
+            table = Table(table_name, MetaData(), autoload_with=connection)
         identifiers = _row_identifier_columns(table, dialect_name)
         encrypted_columns = sorted(
             name for name in columns

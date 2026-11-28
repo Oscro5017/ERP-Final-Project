@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import (
     CropCycle,
-    InputApplication,
+    Activity,
     Product,
     STOCK_MOVEMENT_TYPES,
     StockDocument,
@@ -23,7 +23,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.secure_fields import present_text_safe
-from ..services.source_types import CROP_CYCLE_HARVEST, INPUT_APPLICATION, STOCK_DOCUMENT
+from ..services.source_types import ACTIVITY, CROP_CYCLE_HARVEST, STOCK_DOCUMENT
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 _BANGKOK = ZoneInfo("Asia/Bangkok")
@@ -45,9 +45,14 @@ def _source_label(db: Session, movement: StockMovement) -> str | None:
     if movement.source_type == STOCK_DOCUMENT:
         document = db.get(StockDocument, movement.source_id)
         return document.doc_no if document else None
-    if movement.source_type == INPUT_APPLICATION:
-        application = db.get(InputApplication, movement.source_id)
-        cycle_id = application.cycle_id if application else None
+    if movement.source_type == ACTIVITY:
+        activity = db.get(Activity, movement.source_id)
+        if activity is None:
+            return None
+        cycle_ids = [target.crop_cycle_id for target in activity.targets if target.crop_cycle_id is not None]
+        if len(cycle_ids) > 1:
+            return f"{len(cycle_ids)} รอบปลูก"
+        cycle_id = cycle_ids[0] if cycle_ids else None
     cycle = db.get(CropCycle, cycle_id) if cycle_id is not None else None
     return f"โต๊ะ {cycle.table.table_number} · {cycle.cycle_code}" if cycle else None
 

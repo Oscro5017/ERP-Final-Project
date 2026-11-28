@@ -170,17 +170,20 @@ def main():
             if status == "harvested":
                 patch(f"/crop-cycles/{cycle}", {"status": "harvested", "harvest_date": day(start + 42), "harvest_quantity_kg": harvest})
 
-        # Fertiliser and spray records, which also take stock out.
-        def apply(table, offset, category, items, note=None):
-            post(f"/crop-cycles/{cycles[table]}/input-applications", {
-                "applied_date": day(offset), "category": category, "note": note,
+        # Fertiliser and spray activities, which also take stock out.
+        def apply(tables_used, offset, kind, items, note=None, status="done"):
+            body = {
+                "kind": kind, "status": status, "cycle_ids": [cycles[table] for table in tables_used], "note": note,
                 "items": [{"item_name": name, "quantity": quantity, "unit": unit, "product_id": product} for name, quantity, unit, product in items],
-            })
+            }
+            body["done_on" if status == "done" else "planned_date"] = day(offset)
+            post("/activities", body)
 
-        apply(16, -14, "ปุ๋ย", [("ปุ๋ย A", 2, "ลิตร", fert_a), ("ปุ๋ย B", 1.5, "ลิตร", fert_b)])
-        apply(17, -9, "ปุ๋ย", [("ปุ๋ย A", 2, "ลิตร", fert_a), ("ปุ๋ย B", 2, "ลิตร", fert_b)])
-        apply(18, -4, "ยา", [("สารสะเดา", 50, "มล.", neem)], note="พบเพลี้ยเล็กน้อยที่ขอบโต๊ะ")
-        apply(15, -20, "ปุ๋ย", [("ปุ๋ย A", 1.5, "ลิตร", fert_a), ("น้ำหมักชีวภาพ", 1, "ลิตร", None)])
+        apply([16, 17], -14, "fertilize", [("ปุ๋ย A", 4, "ลิตร", fert_a), ("ปุ๋ย B", 3, "ลิตร", fert_b)])
+        apply([17], -9, "fertilize", [("ปุ๋ย A", 2, "ลิตร", fert_a), ("ปุ๋ย B", 2, "ลิตร", fert_b)])
+        apply([18], -4, "spray", [("สารสะเดา", 50, "มล.", neem)], note="พบเพลี้ยเล็กน้อยที่ขอบโต๊ะ")
+        apply([15], -20, "fertilize", [("ปุ๋ย A", 1.5, "ลิตร", fert_a), ("น้ำหมักชีวภาพ", 1, "ลิตร", None)])
+        apply([16, 17, 18], 2, "spray", [("สารสะเดา", 120, "มล.", neem)], note="ฉีดกันเพลี้ยรอบถัดไป", status="pending")
 
         # Sales, a giveaway, and spoiled produce.
         def send(offset, customer, lines, purpose="sale", note=None, record_finance=None):
@@ -217,9 +220,10 @@ def main():
         post(f"/sales-orders/{cancelled['id']}/close", {"status": "cancelled"})
 
         # Day-to-day farm work and costs.
-        post("/tasks", {"title": "ล้างถังสารละลาย", "due_date": day(-2)})
-        post("/tasks", {"title": "ตรวจค่า EC และ pH", "due_date": day(1)})
-        post("/tasks", {"title": "ซ่อมท่อน้ำโต๊ะ 12", "due_date": day(-6), "status": "done", "labor_cost": "300", "worker_count": 1})
+        post("/activities", {"kind": "general", "title": "ล้างถังสารละลาย", "status": "pending", "planned_date": day(-2)})
+        post("/activities", {"kind": "general", "title": "ตรวจค่า EC และ pH", "status": "pending", "planned_date": day(1)})
+        post("/activities", {"kind": "general", "title": "ซ่อมท่อน้ำโต๊ะ 12", "done_on": day(-6), "table_ids": [tables[12]],
+                             "labor_cost": "300", "worker_count": 1})
         for entry_date, direction, category, amount, description in [
             (-25, "expense", "equipment", "1500", "ปั๊มน้ำตัวใหม่"),
             (-20, "expense", "utilities", "850", "ค่าไฟเดือนนี้"),

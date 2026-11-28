@@ -10,7 +10,7 @@ const apiPrefixes = [
   '/tables',
   '/batches',
   '/crop-types',
-  '/input-applications',
+  '/activities',
   '/input-catalog',
   '/tasks',
   '/weather',

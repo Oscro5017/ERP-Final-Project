@@ -702,6 +702,7 @@ _ACTIVITY_COLUMNS = {
     "worker_count": "INTEGER",
     "extra_cost_encrypted": "BLOB",
     "stock_alert_product_id": "INTEGER REFERENCES products(id) ON DELETE SET NULL",
+    "legacy_input_application_id": "INTEGER",
 }
 
 # Titles the stage generator used before activities had a kind.
@@ -793,3 +794,127 @@ def _backfill_activity_kinds(connection) -> None:
             "UPDATE activities SET kind = :kind WHERE kind = 'general' AND source = 'auto' "
             "AND is_encrypted = 0 AND cycle_id IS NOT NULL AND title LIKE :pattern"
         ), {"kind": kind, "pattern": f"{prefix}%"})
+
+
+# Words in an old input category that mean spraying rather than feeding.
+_SPRAY_WORDS = ("ยา", "สาร", "ฉีด", "พ่น", "chemical", "spray", "pest", "insect", "fung", "herb")
+
+
+def _input_kind(category: str | None) -> str:
+    text_value = (category or "").casefold()
+    return "spray" if any(word in text_value for word in _SPRAY_WORDS) else "fertilize"
+
+
+def migrate_activity_records(engine: Engine) -> dict[str, int]:
+    """Phase 3 step 2: activities cover crop cycles through targets, and absorb input applications.
+
+    Runs once per row: targets are added only where an activity has none, and each input
+    application is converted only if no activity remembers it. Stock movements of a converted
+    application are moved over to its activity, so balances do not change.
+    """
+    counts = {"targets": 0, "done_dates": 0, "applications": 0, "items": 0, "movements": 0}
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    if "activities" not in tables or "activity_targets" not in tables:
+        return counts
+
+    with engine.begin() as connection:
+        if "finance_entries" in tables:
+            index_sql = connection.execute(text(
+                "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'uq_finance_entries_auto_posted_source'"
+            )).scalar()
+            if index_sql is None or "coalesce" not in index_sql.casefold():
+                connection.execute(text("DROP INDEX IF EXISTS uq_finance_entries_auto_posted_source"))
+                connection.execute(text(
+                    "CREATE UNIQUE INDEX uq_finance_entries_auto_posted_source "
+                    "ON finance_entries (source_type, source_id, coalesce(crop_cycle_id, 0)) "
+                    "WHERE is_auto = 1 AND status = 'posted' AND source_id IS NOT NULL"
+                ))
+
+        counts["done_dates"] = connection.execute(text(
+            "UPDATE activities SET done_on = planned_date, started_on = COALESCE(started_on, planned_date) "
+            "WHERE status = 'done' AND done_on IS NULL"
+        )).rowcount or 0
+
+        counts["targets"] = connection.execute(text("""
+            INSERT INTO activity_targets (activity_id, crop_cycle_id, table_id, share, share_is_manual, created_at, updated_at)
+            SELECT activity.id, cycle.id, cycle.table_id, 1.0, 0, COALESCE(activity.created_at, CURRENT_TIMESTAMP),
+                   COALESCE(activity.updated_at, CURRENT_TIMESTAMP)
+            FROM activities AS activity
+            JOIN crop_cycles AS cycle ON cycle.id = activity.cycle_id
+            WHERE NOT EXISTS (SELECT 1 FROM activity_targets AS target WHERE target.activity_id = activity.id)
+        """)).rowcount or 0
+
+        if "input_applications" not in tables or "input_items" not in tables:
+            return counts
+        applications = connection.execute(text("""
+            SELECT application.*, cycle.table_id AS table_id
+            FROM input_applications AS application
+            LEFT JOIN crop_cycles AS cycle ON cycle.id = application.cycle_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM activities WHERE activities.legacy_input_application_id = application.id
+            )
+            ORDER BY application.id
+        """)).mappings().all()
+        for application in applications:
+            kind = _input_kind(application["category"])
+            title = (application["category"] or "").strip() or ("ฉีดพ่น" if kind == "spray" else "ใส่ปุ๋ย")
+            created_at = application["created_at"] or datetime.now()
+            updated_at = application["updated_at"] or created_at
+            activity_id = connection.execute(text("""
+                INSERT INTO activities (
+                    kind, cycle_id, title, planned_date, started_on, done_on, status, source, remind,
+                    is_encrypted, note_encrypted, legacy_input_application_id, created_at, updated_at, deleted_at
+                ) VALUES (
+                    :kind, :cycle_id, :title, :day, :day, :day, 'done', 'manual', 0,
+                    1, :note, :legacy_id, :created_at, :updated_at, :deleted_at
+                )
+            """), {
+                "kind": kind,
+                "cycle_id": application["cycle_id"],
+                "title": encrypt_text(title),
+                "day": application["applied_date"],
+                "note": application["note_encrypted"],
+                "legacy_id": application["id"],
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "deleted_at": application["deleted_at"],
+            }).lastrowid
+            if application["table_id"] is not None:
+                connection.execute(text(
+                    "INSERT INTO activity_targets (activity_id, crop_cycle_id, table_id, share, share_is_manual, created_at, updated_at) "
+                    "VALUES (:activity_id, :cycle_id, :table_id, 1.0, 0, :created_at, :updated_at)"
+                ), {
+                    "activity_id": activity_id, "cycle_id": application["cycle_id"], "table_id": application["table_id"],
+                    "created_at": created_at, "updated_at": updated_at,
+                })
+            items = connection.execute(text(
+                "SELECT * FROM input_items WHERE application_id = :application_id ORDER BY id"
+            ), {"application_id": application["id"]}).mappings().all()
+            for item in items:
+                connection.execute(text(
+                    "INSERT INTO activity_items (activity_id, item_name_encrypted, product_id, quantity_encrypted, unit, created_at, updated_at) "
+                    "VALUES (:activity_id, :name, :product_id, :quantity, :unit, :created_at, :updated_at)"
+                ), {
+                    "activity_id": activity_id,
+                    "name": item["item_name_encrypted"],
+                    "product_id": item.get("product_id"),
+                    "quantity": item["quantity_encrypted"],
+                    "unit": item["unit"] or "",
+                    "created_at": item["created_at"] or created_at,
+                    "updated_at": item["updated_at"] or updated_at,
+                })
+                counts["items"] += 1
+            if "stock_movements" in tables:
+                counts["movements"] += connection.execute(text(
+                    "UPDATE stock_movements SET source_type = 'activity', source_id = :activity_id "
+                    "WHERE source_type = 'input_application' AND source_id = :application_id"
+                ), {"activity_id": activity_id, "application_id": application["id"]}).rowcount or 0
+            counts["applications"] += 1
+
+    if any(counts.values()):
+        logger.info(
+            "Activity records: %s targets, %s finish dates, %s input applications (%s items, %s stock movements) converted.",
+            counts["targets"], counts["done_dates"], counts["applications"], counts["items"], counts["movements"],
+        )
+    return counts

@@ -4,15 +4,24 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import CropCycle, Role, Activity, User, utc_now
+from ..models import CropCycle, Role, Activity, User
 from ..query_helpers import active_rows, get_active
 from ..schemas import TaskCreate, TaskCycleInfo, TaskResponse, TaskUpdate
 from ..security import get_current_user
 from ..services.secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe, safe_decrypt_text
 from ..services.sales_orders import planting_flags_for_tasks
-from ..services.task_finance import sync_task_finance, void_task_finance
+from ..services.activities import apply_status, delete_activity, set_targets, sync_activity
 
+# Kept for the current web pages until they move to /activities; writes go through the activity service.
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+def _sync_legacy_task(db: Session, task: Activity, user_id: int) -> None:
+    """A /tasks activity counts as done on its due date, as it always has."""
+    apply_status(task, task.status, task.planned_date if task.status == "done" else None)
+    if task.status == "done":
+        task.done_on = task.planned_date
+    sync_activity(db, task, user_id)
 
 
 def build_task_response(task: Activity, role: Role, planting: tuple[int, bool] | None = None) -> TaskResponse:
@@ -118,6 +127,7 @@ def create_task(
 
     task_data = payload.model_dump()
     task_data["planned_date"] = task_data.pop("due_date")
+    cycle_id = task_data.pop("cycle_id")
     task_title = task_data.pop("title")
     labor_cost = task_data.pop("labor_cost")
     extra_cost = task_data.pop("extra_cost")
@@ -130,8 +140,8 @@ def create_task(
         extra_cost_encrypted=encrypt_number(extra_cost).encode("ascii") if extra_cost is not None else None,
     )
     db.add(task)
-    db.flush()
-    sync_task_finance(db, task, user.id)
+    set_targets(db, task, [cycle_id] if cycle_id else [])
+    _sync_legacy_task(db, task, user.id)
     db.commit()
     db.refresh(task)
 
@@ -196,12 +206,14 @@ def update_task(
             setattr(task, token_field, encrypt_number(value).encode("ascii") if value is not None else None)
         elif field == "due_date":
             task.planned_date = value
+        elif field == "cycle_id":
+            set_targets(db, task, [value] if value else [])
         elif field not in {"title", "source"}:
             setattr(task, field, value)
     task.source = next_source
 
     if finance_fields_changed:
-        sync_task_finance(db, task, user.id)
+        _sync_legacy_task(db, task, user.id)
     db.commit()
     db.refresh(task)
 
@@ -231,6 +243,5 @@ def delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    task.deleted_at = utc_now()
-    void_task_finance(db, task.id)
+    delete_activity(db, task)
     db.commit()

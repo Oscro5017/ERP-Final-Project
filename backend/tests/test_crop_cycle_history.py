@@ -13,7 +13,6 @@ from app.models import (
     CropCycle,
     CropType,
     Customer,
-    InputApplication,
     Role,
     Table,
     Activity,
@@ -128,9 +127,10 @@ def test_soft_deletes_keep_rows_and_hide_them_from_lists():
         assert masked_customer["contact"].startswith("gAAAA")
         assert masked_customer["is_masked"] is True
 
-        application_response = client.post(f"/crop-cycles/{cycle_id}/input-applications", headers=owner_headers, json={
-            "applied_date": "2026-10-20",
-            "category": "ปุ๋ย",
+        application_response = client.post("/activities", headers=owner_headers, json={
+            "kind": "fertilize",
+            "done_on": "2026-10-20",
+            "cycle_ids": [cycle_id],
             "items": [{"item_name": "Phase 1c test mix", "quantity": 1, "unit": "ลิตร"}],
         })
         application_id = application_response.json()["id"]
@@ -143,8 +143,8 @@ def test_soft_deletes_keep_rows_and_hide_them_from_lists():
         })
         task_id = task_response.json()["id"]
 
-        assert client.delete(f"/input-applications/{application_id}", headers=owner_headers).status_code == 204
-        assert client.get(f"/crop-cycles/{cycle_id}/input-applications", headers=owner_headers).json() == []
+        assert client.delete(f"/activities/{application_id}", headers=owner_headers).status_code == 204
+        assert client.get(f"/activities?cycle_id={cycle_id}&kind=fertilize", headers=owner_headers).json() == []
         assert client.delete(f"/customers/{customer_id}", headers=owner_headers).status_code == 204
         assert client.get("/customers", headers=owner_headers).json() == []
         assert client.get("/customers", headers=developer_headers).json() == []
@@ -157,7 +157,7 @@ def test_soft_deletes_keep_rows_and_hide_them_from_lists():
         with session_local() as db:
             assert db.get(CropCycle, cycle_id).deleted_at is not None
             assert db.get(Customer, customer_id).deleted_at is not None
-            assert db.get(InputApplication, application_id).deleted_at is not None
+            assert db.get(Activity, application_id).deleted_at is not None
             assert db.get(Activity, task_id).deleted_at is not None
     finally:
         app.dependency_overrides.clear()

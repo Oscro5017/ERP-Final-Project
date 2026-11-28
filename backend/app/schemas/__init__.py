@@ -14,15 +14,17 @@ from .farm import (
     CropCycleResponse,
     CropCycleStatusLogResponse,
 )
-from .inputs import (
-    InputItemCreate,
-    InputItemUpdate,
-    InputApplicationCreate,
-    InputApplicationUpdate,
-    InputItemResponse,
-    InputApplicationResponse,
-    InputCatalogSuggestionResponse,
-    InputCatalogSuggestionsResponse,
+from .inputs import InputCatalogSuggestionResponse, InputCatalogSuggestionsResponse
+from .activities import (
+    ActivityItemInput,
+    ActivityShareInput,
+    ActivityCreate,
+    ActivityUpdate,
+    ActivityStatusChange,
+    ActivityTargetResponse,
+    ActivityItemResponse,
+    ActivityResponse,
+    ChangeNoteResponse,
 )
 from .tasks import TaskCreate, TaskUpdate, TaskCycleInfo, TaskResponse
 from .partners import (

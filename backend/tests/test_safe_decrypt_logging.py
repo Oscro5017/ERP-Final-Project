@@ -16,14 +16,14 @@ from app.models import (
     CropCycle,
     CropType,
     Customer,
-    InputApplication,
+    ActivityItem,
+    ActivityTarget,
     InputCatalog,
-    InputItem,
     Role,
     Table,
     Activity,
 )
-from app.routers import customers, input_applications, tasks
+from app.routers import activities, customers, tasks
 from app.services import secure_fields
 
 
@@ -161,7 +161,7 @@ def build_api():
     api = FastAPI()
     api.include_router(tasks.router)
     api.include_router(customers.router)
-    api.include_router(input_applications.router)
+    api.include_router(activities.router)
     current = {"role": Role.owner}
 
     def override_db():
@@ -171,7 +171,7 @@ def build_api():
     api.dependency_overrides[get_db] = override_db
     api.dependency_overrides[tasks.get_current_user] = lambda: SimpleNamespace(role=current["role"])
     api.dependency_overrides[customers.get_current_role] = lambda: current["role"]
-    api.dependency_overrides[input_applications.get_current_user] = lambda: SimpleNamespace(role=current["role"])
+    api.dependency_overrides[activities.get_current_user] = lambda: SimpleNamespace(role=current["role"])
     return api, engine, sessions, current
 
 
@@ -214,14 +214,16 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
         )
         db.add(cycle)
         db.flush()
-        application = InputApplication(
-            cycle_id=cycle.id, applied_date=date(2026, 11, 6), category="fertilizer",
+        application = Activity(
+            kind="fertilize", cycle_id=cycle.id, title=good_task, planned_date=date(2026, 11, 6),
+            done_on=date(2026, 11, 6), status="done", source="manual", is_encrypted=True,
             note_encrypted=bad_values["note"].encode(),
         )
         application.items.extend([
-            InputItem(item_name_encrypted=good_item.encode(), quantity_encrypted=good_quantity.encode(), unit="kg"),
-            InputItem(item_name_encrypted=bad_values["item"].encode(), quantity_encrypted=bad_values["quantity"].encode(), unit="L"),
+            ActivityItem(item_name_encrypted=good_item.encode(), quantity_encrypted=good_quantity.encode(), unit="kg"),
+            ActivityItem(item_name_encrypted=bad_values["item"].encode(), quantity_encrypted=bad_values["quantity"].encode(), unit="L"),
         ])
+        application.targets.append(ActivityTarget(crop_cycle_id=cycle.id, table_id=1, share=1.0))
         db.add(application)
         db.add_all([
             InputCatalog(name_encrypted=encrypt_text("SAFE-CATALOG").encode(), name_hash="a" * 64, use_count=1),
@@ -237,12 +239,13 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
             task_response = client.get("/tasks")
             customer_response = client.get("/customers")
             customer_search = client.get("/customers", params={"q": "safe-customer"})
-            application_response = client.get(f"/crop-cycles/{cycle_id}/input-applications")
+            application_response = client.get("/activities", params={"cycle_id": cycle_id})
             catalog_response = client.get("/input-catalog/suggestions", params={"q": "safe"})
 
         assert task_response.status_code == customer_response.status_code == 200
         task_rows = task_response.json()
-        assert [row["title"] for row in task_rows] == ["SAFE-TASK", secure_fields.DECRYPT_FAILED_TEXT]
+        # /tasks now lists every activity; the fertiliser activity comes last on the same day.
+        assert [row["title"] for row in task_rows] == ["SAFE-TASK", secure_fields.DECRYPT_FAILED_TEXT, "SAFE-TASK"]
         assert task_rows[1]["decrypt_failed"] is True
 
         customers_payload = customer_response.json()

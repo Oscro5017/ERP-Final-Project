@@ -284,9 +284,9 @@ def test_input_use_counts_on_its_applied_date(env):
     fertiliser = env.post("/products", {"category": "fertilizer", "name": "ปุ๋ย A", "unit": "kg"})["id"]
     env.post("/trade/inbound", {"doc_date": day(-30), "lines": [{"product_id": fertiliser, "quantity": 10}]})
     cycle = env.cycle(-20)["id"]
-    application = env.post(f"/crop-cycles/{cycle}/input-applications", {
-        "applied_date": day(-7), "category": "ปุ๋ย",
+    application = env.post("/activities", {
+        "kind": "fertilize", "done_on": day(-7), "cycle_ids": [cycle],
         "items": [{"item_name": "ปุ๋ย A", "quantity": 2, "unit": "kg", "product_id": fertiliser}]})
     assert balance_on(env, fertiliser, -8) == 10 and balance_on(env, fertiliser, -7) == 8
-    env.patch(f"/input-applications/{application['id']}", {"applied_date": day(-2)})
+    env.patch(f"/activities/{application['id']}", {"done_on": day(-2)})
     assert balance_on(env, fertiliser, -3) == 10 and balance_on(env, fertiliser, -2) == 8

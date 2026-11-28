@@ -14,7 +14,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models import (
     Batch, CropCycle, CropCycleStatusLog, CropType, Customer, FinanceEntry,
-    InputApplication, InputCatalog, InputItem, Insight, Product,
+    ActivityItem, ActivityTarget, InputCatalog, Insight, Product,
     Role, StockDocument, StockDocumentLine, StockMovement, Supplier, Table, Activity, User,
 )
 from app.security import get_current_user
@@ -25,7 +25,7 @@ MARKERS = {
     "ZZ_PRODUCT_SECRET_6F92", "ZZ_MOVEMENT_NOTE_6F92", "ZZ_SUPPLIER_NAME_6F92",
     "ZZ_SUPPLIER_CONTACT_6F92", "ZZ_SUPPLIER_AREA_6F92", "ZZ_SUPPLIER_NOTE_6F92",
     "ZZ_CUSTOMER_NAME_6F92", "ZZ_CUSTOMER_CONTACT_6F92", "ZZ_CUSTOMER_AREA_6F92",
-    "ZZ_DOCUMENT_NOTE_6F92", "ZZ_INPUT_NAME_6F92", "ZZ_INPUT_NOTE_6F92",
+    "ZZ_DOCUMENT_NOTE_6F92", "ZZ_INPUT_NAME_6F92", "ZZ_INPUT_NOTE_6F92", "ZZ_INPUT_TITLE_6F92",
     "ZZ_TASK_TITLE_6F92", "ZZ_FINANCE_DESCRIPTION_6F92", "ZZ_INSIGHT_TITLE_6F92",
     "ZZ_INSIGHT_BODY_6F92", "98765.43", "12345.67", "54321.09", "55.55",
     "123.45", "234.56", "345.67", "456.78",
@@ -88,9 +88,10 @@ def _make_phase2_db():
                 customer_id=1, crop_cycle_id=1, note_encrypted=_enc("ZZ_DOCUMENT_NOTE_6F92"),
                 status="posted",
             ),
-            InputApplication(
-                id=1, cycle_id=1, applied_date=date(2026, 11, 1), category="fertilizer",
-                note_encrypted=_enc("ZZ_INPUT_NOTE_6F92"),
+            Activity(
+                id=2, kind="fertilize", cycle_id=1, title=_enc("ZZ_INPUT_TITLE_6F92").decode("ascii"),
+                planned_date=date(2026, 11, 1), done_on=date(2026, 11, 1), status="done", source="manual",
+                is_encrypted=True, note_encrypted=_enc("ZZ_INPUT_NOTE_6F92"),
             ),
             InputCatalog(
                 id=1, name_encrypted=_enc("ZZ_INPUT_NAME_6F92"),
@@ -115,10 +116,11 @@ def _make_phase2_db():
                 body_encrypted=_enc("ZZ_INSIGHT_BODY_6F92"), severity="info", status="new",
             ),
         ])
-        db.add(InputItem(
-            id=1, application_id=1, item_name_encrypted=_enc("ZZ_INPUT_NAME_6F92"),
+        db.add(ActivityItem(
+            id=1, activity_id=2, item_name_encrypted=_enc("ZZ_INPUT_NAME_6F92"),
             quantity_encrypted=encrypt_number(Decimal("98765.43")).encode("ascii"), unit="kg", product_id=1,
         ))
+        db.add(ActivityTarget(activity_id=2, crop_cycle_id=1, table_id=1, share=1.0))
         db.add(StockDocumentLine(
             id=1, document_id=1, line_no=1, product_id=1, quantity=1, unit="kg",
             unit_price_encrypted=encrypt_number(Decimal("54321.09")).encode("ascii"),
@@ -149,7 +151,7 @@ READ_ENDPOINTS = [
     "/customers", "/finance/entries", "/finance/summary?from=2026-01-01&to=2026-12-31",
     "/finance/cycles/1/pnl", "/finance/prices?from=2026-01-01&to=2026-12-31",
     "/finance/customers/revenue?from=2026-01-01&to=2026-12-31", "/insights", "/insights/1",
-    "/crop-cycles/1/input-applications", "/input-catalog/suggestions", "/products",
+    "/activities", "/activities/2", "/input-catalog/suggestions", "/products",
     "/products/1/movements", "/suppliers", "/suppliers/1", "/stock/balances",
     "/stock/movements", "/trade/documents", "/trade/documents/1", "/tasks",
 ]
@@ -166,9 +168,10 @@ WRITE_ENDPOINTS = [
     ("PATCH", "/finance/entries/1", {"description": "ZZ_MATRIX_FINANCE_UPDATED_6F92"}),
     ("POST", "/finance/entries/1/void", {"reason": "ZZ_MATRIX_VOID_FINANCE_6F92"}),
     ("PATCH", "/insights/1/status", {"status": "seen"}),
-    ("POST", "/crop-cycles/1/input-applications", {"category": "fertilizer", "note": "ZZ_MATRIX_INPUT_NOTE_6F92", "items": [{"item_name": "ZZ_MATRIX_INPUT_6F92", "quantity": 1, "unit": "kg"}]}),
-    ("PATCH", "/input-applications/1", {"note": "ZZ_MATRIX_INPUT_UPDATED_6F92"}),
-    ("DELETE", "/input-applications/1", None),
+    ("POST", "/activities", {"kind": "fertilize", "cycle_ids": [1], "note": "ZZ_MATRIX_INPUT_NOTE_6F92", "items": [{"item_name": "ZZ_MATRIX_INPUT_6F92", "quantity": 1, "unit": "kg"}]}),
+    ("PATCH", "/activities/2", {"note": "ZZ_MATRIX_INPUT_UPDATED_6F92", "reason": "ZZ_MATRIX_REASON_6F92"}),
+    ("POST", "/activities/2/status", {"status": "pending"}),
+    ("DELETE", "/activities/2", None),
     ("POST", "/products", {"category": "other", "name": "ZZ_MATRIX_PRODUCT_6F92", "unit": "kg"}),
     ("PATCH", "/products/1", {"name": "ZZ_MATRIX_PRODUCT_UPDATED_6F92"}),
     ("POST", "/products/1/adjustments", {"counted_quantity": 7, "unit": "kg", "note": "ZZ_MATRIX_ADJUSTMENT_6F92"}),
@@ -293,11 +296,11 @@ def test_phase2_write_endpoint_responses_mask_owner_and_developer_matrix():
                 "table_id": 1, "batch_id": 1, "crop_type_id": 1, "nursery_start": "2026-02-01",
             }).json()["id"]
             send("PATCH", f"/crop-cycles/{cycle_id}", {"harvest_quantity_kg": 2})
-            application_id = send("POST", "/crop-cycles/1/input-applications", {
-                "category": "fertilizer", "note": "ZZ_MATRIX_INPUT_NOTE_6F92",
+            application_id = send("POST", "/activities", {
+                "kind": "fertilize", "cycle_ids": [1], "note": "ZZ_MATRIX_INPUT_NOTE_6F92",
                 "items": [{"item_name": "ZZ_MATRIX_INPUT_6F92", "quantity": 1, "unit": "kg"}],
             }).json()["id"]
-            send("PATCH", f"/input-applications/{application_id}", {"note": "ZZ_MATRIX_INPUT_UPDATED_6F92"})
+            send("PATCH", f"/activities/{application_id}", {"note": "ZZ_MATRIX_INPUT_UPDATED_6F92", "reason": "ZZ_MATRIX_REASON_6F92"})
 
             # Finance, tasks, documents, and insight status.
             entry_id = send("POST", "/finance/entries", {
@@ -325,7 +328,7 @@ def test_phase2_write_endpoint_responses_mask_owner_and_developer_matrix():
             send("PATCH", "/insights/1/status", {"status": "seen"})
 
             # Soft deletes are last because later flows still reference the records.
-            send("DELETE", f"/input-applications/{application_id}")
+            send("DELETE", f"/activities/{application_id}")
             send("DELETE", f"/tasks/{task_id}")
             send("DELETE", f"/crop-cycles/{cycle_id}")
             send("DELETE", f"/products/{product_id}")
@@ -397,8 +400,8 @@ def test_phase2_create_update_void_and_report_flows_do_not_log_plaintext(caplog)
             "extra_cost": "54321.09",
         })
         assert task.status_code == 201, task.text
-        application = client.post("/crop-cycles/1/input-applications", json={
-            "category": "fertilizer", "note": "ZZ_WRITE_INPUT_NOTE_6F92",
+        application = client.post("/activities", json={
+            "kind": "fertilize", "cycle_ids": [1], "note": "ZZ_WRITE_INPUT_NOTE_6F92",
             "items": [{"item_name": "ZZ_WRITE_INPUT_6F92", "quantity": 1.25, "unit": "kg"}],
         })
         assert application.status_code == 201, application.text

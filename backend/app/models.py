@@ -239,9 +239,11 @@ class FinanceEntry(TimestampMixin, Base):
     __table_args__ = (
         Index("ix_finance_entries_date_status", "entry_date", "status"),
         Index("ix_finance_entries_source", "source_type", "source_id", "is_auto", "status"),
+        # One posted automatic entry per source and crop cycle; an activity over several
+        # cycles posts one entry for each.
         Index(
             "uq_finance_entries_auto_posted_source",
-            "source_type", "source_id",
+            "source_type", "source_id", text("coalesce(crop_cycle_id, 0)"),
             unique=True,
             sqlite_where=text("is_auto = 1 AND status = 'posted' AND source_id IS NOT NULL"),
         ),
@@ -456,6 +458,7 @@ class Activity(TimestampMixin, SoftDeleteMixin, Base):
     kind: Mapped[str] = mapped_column(
         String(24), default=ActivityKind.general.value, server_default=ActivityKind.general.value, nullable=False, index=True
     )
+    # Set only while the activity covers exactly one crop cycle; activity_targets is the full list.
     cycle_id: Mapped[int | None] = mapped_column(ForeignKey("crop_cycles.id", ondelete="CASCADE"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(Text)
     planned_date: Mapped[date] = mapped_column(Date, index=True)
@@ -470,6 +473,8 @@ class Activity(TimestampMixin, SoftDeleteMixin, Base):
     worker_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     extra_cost_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     stock_alert_product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    # The input application this activity was converted from, so the conversion runs once.
+    legacy_input_application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True, index=True)
     cycle: Mapped[CropCycle | None] = relationship(backref="activities")
     targets: Mapped[list["ActivityTarget"]] = relationship(back_populates="activity", cascade="all, delete-orphan")
     items: Mapped[list["ActivityItem"]] = relationship(back_populates="activity", cascade="all, delete-orphan")
@@ -490,11 +495,15 @@ class ActivityTarget(TimestampMixin, Base):
 
 
 class ActivityItem(TimestampMixin, Base):
-    """A stock item an activity uses, such as seed, fertilizer or pesticide."""
+    """Something an activity uses, such as seed, fertilizer or pesticide.
+
+    Only items linked to a stock item (``product_id``) leave the stock; others are a record only.
+    """
     __tablename__ = "activity_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id", ondelete="CASCADE"), nullable=False, index=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True)
+    item_name_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
     quantity_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     unit: Mapped[str] = mapped_column(String(80), nullable=False)
     activity: Mapped[Activity] = relationship(back_populates="items")

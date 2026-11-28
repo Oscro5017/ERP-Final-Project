@@ -17,8 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
-from .migrations import migrate_activities, migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_rename_tasks_to_activities, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
-from .routers import auth, crop_cycles, customers, dashboard, finance, freshness, input_applications, insights, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
+from .migrations import migrate_activities, migrate_activity_records, migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_rename_tasks_to_activities, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
+from .routers import activities, auth, crop_cycles, customers, dashboard, finance, freshness, insights, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
 from .seed import seed_database, validate_production_default_passwords
 from .services.encryption_canary import ensure_encryption_canary
 from .services.sales_orders import replan_open_orders_job
@@ -165,6 +165,7 @@ async def lifespan(_app: FastAPI):
     migrate_customer_contact_encryption(engine, backup_dir=settings.backup_dir)
     migrate_phase1e(engine, backup_dir=settings.backup_dir)
     migrate_activities(engine)
+    migrate_activity_records(engine)
     with SessionLocal() as db:
         seed_database(db, settings=settings)
 
@@ -242,7 +243,7 @@ def create_app(settings=None) -> FastAPI:
     api.include_router(finance.router)
     api.include_router(freshness.router)
     api.include_router(insights.router)
-    api.include_router(input_applications.router)
+    api.include_router(activities.router)
     api.include_router(preferences.router)
     api.include_router(products.router)
     api.include_router(sales_orders.router)

@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import CropCycle, CropCycleStatusLog, CycleStatus, Activity, utc_now
+from ..models import Activity, ActivityTarget, CropCycle, CropCycleStatusLog, CycleStatus, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import CropCycleCreate, CropCycleResponse, CropCycleStatusLogResponse, CropCycleUpdate
 from ..security import get_current_user
@@ -11,7 +11,7 @@ from ..services.crop_cycle_options import OPTION_FIELDS, save_cycle_options
 from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
 from ..services.crop_cycle_lifecycle import sync_crop_cycle_lifecycle
 from ..services.sales_orders import replan_open_orders
-from ..services.task_finance import void_task_finance
+from ..services.activities import delete_activity, detach_cycle, sync_activity
 
 router = APIRouter(prefix="/crop-cycles", tags=["crop cycles"])
 
@@ -67,9 +67,13 @@ def delete_cycle(cycle_id: int, db: Session = Depends(get_db), _=Depends(get_cur
         raise HTTPException(status_code=404, detail="Crop cycle not found")
     cycle.deleted_at = utc_now()
     sync_crop_cycle_harvest_stock(db, cycle)
-    for task in db.scalars(active_rows(select(Activity).where(Activity.cycle_id == cycle.id), Activity)).all():
-        task.deleted_at = cycle.deleted_at
-        void_task_finance(db, task.id, "Crop cycle removed")
+    covering = select(ActivityTarget.activity_id).where(ActivityTarget.crop_cycle_id == cycle.id)
+    for activity in db.scalars(active_rows(select(Activity).where(Activity.id.in_(covering)), Activity)).all():
+        # An activity that also covers other cycles stays for them; one left with nothing is removed.
+        if detach_cycle(db, activity, cycle.id):
+            delete_activity(db, activity, "Crop cycle removed")
+        else:
+            sync_activity(db, activity)
     replan_open_orders(db)
     db.commit()
 

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Activity, ActivityKind, CropCycle, CropType, CycleStatus, Table
 from ..query_helpers import active_rows
+from .activities import apply_status, attach_cycle
 from .crop_cycle_options import cycle_option
 
 
@@ -50,7 +51,7 @@ def _stage_activity(db: Session, cycle_id: int, kind: ActivityKind, status: str)
 def _finish_pending(db: Session, cycle_id: int, kind: ActivityKind) -> None:
     pending = _stage_activity(db, cycle_id, kind, "pending")
     if pending:
-        pending.status = "done"
+        apply_status(pending, "done")
 
 
 def _upsert_stage_task(db: Session, cycle_id: int, kind: ActivityKind, title: str, due_date: date) -> None:
@@ -67,11 +68,13 @@ def _upsert_stage_task(db: Session, cycle_id: int, kind: ActivityKind, title: st
     if not cycle_option(db, cycle_id, "create_tasks"):
         return
 
-    db.add(Activity(
+    activity = Activity(
         kind=kind.value,
-        cycle_id=cycle_id,
         title=title,
         planned_date=due_date,
         status="pending",
         source="auto",
-    ))
+        remind=True,
+    )
+    db.add(activity)
+    attach_cycle(db, activity, db.get(CropCycle, cycle_id))
