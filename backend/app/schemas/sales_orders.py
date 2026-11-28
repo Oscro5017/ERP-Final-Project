@@ -121,6 +121,7 @@ class PlantingProposalResponse(BaseModel):
     expected_ready_date: date
     is_late: bool
     tables_needed: int | None
+    plants_needed: int | None = None
     free_tables: list[TableResponse]
     suggested_table_ids: list[int]
     can_create: bool

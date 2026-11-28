@@ -178,6 +178,10 @@ def main():
                 post(f"/crop-cycles/{cycle}/harvests", {"harvested_on": day(start + 41), "quantity_kg": first})
                 post(f"/crop-cycles/{cycle}/harvests", {"harvested_on": day(start + 42), "quantity_kg": round(harvest - first, 1), "final": True})
 
+        # Table 10 has been cleaned since its harvest, so it is ready to plant again.
+        for cleanup in call("GET", f"/activities?cycle_id={cycles[10]}&kind=cleanup"):
+            post(f"/activities/{cleanup['id']}/status", {"status": "done", "on_date": day(-16)})
+
         # Fertiliser and spray activities, which also take stock out.
         def apply(tables_used, offset, kind, items, note=None, status="done"):
             body = {

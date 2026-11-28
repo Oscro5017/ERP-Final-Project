@@ -6,6 +6,9 @@ from .common import DecryptionStatusResponse
 from .auth import LoginRequest, TokenResponse
 from .farm import (
     TableResponse,
+    TableUpdate,
+    TableCycleResponse,
+    TableBoardResponse,
     BatchResponse,
     CropTypeResponse,
     CropTypeProductMappingUpdate,

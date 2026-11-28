@@ -88,6 +88,27 @@ def average_yield_kg(db: Session, crop_type_id: int) -> float | None:
     return sum(values) / len(values) if values else None
 
 
+def average_yield_per_plant_kg(db: Session, crop_type_id: int) -> float | None:
+    """Kilograms per plant over recent harvests that know their plant count."""
+    statement = select(CropCycle.harvest_quantity_kg, CropCycle.plant_count).where(
+        CropCycle.crop_type_id == crop_type_id, CropCycle.harvest_quantity_kg > 0, CropCycle.plant_count > 0,
+        CropCycle.status == CycleStatus.harvested,
+    )
+    statement = active_rows(statement, CropCycle).order_by(
+        CropCycle.harvest_date.desc(), CropCycle.id.desc()
+    ).limit(_YIELD_SAMPLE)
+    rows = db.execute(statement).all()
+    plants = sum(count for _kg, count in rows)
+    return sum(kg for kg, _count in rows) / plants if plants else None
+
+
+def expected_cycle_yield_kg(cycle: CropCycle, per_cycle: float | None, per_plant: float | None) -> float | None:
+    """What a growing cycle should give: by its plant count when known, else a typical cycle."""
+    if per_plant is not None and cycle.plant_count:
+        return per_plant * cycle.plant_count
+    return per_cycle
+
+
 def _in_product_unit(kilograms: float | None, product: Product) -> Decimal | None:
     if kilograms is None:
         return None
@@ -162,7 +183,8 @@ def product_coverage(db: Session, product: Product) -> dict[int, Coverage]:
                     "stock", lot.remaining, lot.received_on, lot.expires_on, owners.get(lot.cycle_id)
                 ))
     if crop_type is not None:
-        average = _in_product_unit(average_yield_kg(db, crop_type.id), product)
+        per_cycle = average_yield_kg(db, crop_type.id)
+        per_plant = average_yield_per_plant_kg(db, crop_type.id)
         cycles = db.scalars(
             select(CropCycle)
             .where(CropCycle.crop_type_id == crop_type.id, CropCycle.deleted_at.is_(None))
@@ -170,6 +192,7 @@ def product_coverage(db: Session, product: Product) -> dict[int, Coverage]:
         ).all()
         for cycle in cycles:
             owner = owners.get(cycle.id)
+            average = _in_product_unit(expected_cycle_yield_kg(cycle, per_cycle, per_plant), product)
             if cycle.status in _GROWING:
                 if average is None:
                     # Cycles created for a line are trusted to cover it until a yield is known.

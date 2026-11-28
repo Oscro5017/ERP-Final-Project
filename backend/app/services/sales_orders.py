@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import (
+    DEFAULT_TABLE_CAPACITY,
     Batch,
     CropCycle,
     CropType,
@@ -28,7 +29,8 @@ from ..schemas import OutboundDocumentCreate
 from .crop_cycle_options import save_cycle_options
 from .crop_production import start_cycle
 from .finance_entries import create_auto_finance_for_document
-from .order_supply import Coverage, average_yield_kg, delivered_quantity, open_coverage
+from .order_supply import Coverage, average_yield_kg, average_yield_per_plant_kg, delivered_quantity, open_coverage
+from .table_space import free_table_spaces
 from .products_stock import convert_quantity
 from .secure_fields import encrypt_number, encrypt_text, present_number_safe, present_text_safe, safe_decrypt_number
 from .stock_documents import create_stock_document, set_document_purpose
@@ -36,7 +38,6 @@ from .task_finance import void_task_finance
 
 _BANGKOK = ZoneInfo("Asia/Bangkok")
 _QUANTITY = Decimal("0.001")
-_FREE_STATUSES = (CycleStatus.harvested,)
 
 
 class OrderConflict(Exception):
@@ -364,23 +365,43 @@ def reopen_for_voided_document(db: Session, document_id: int) -> None:
         order.closed_at = None
 
 
-def tables_needed(db: Session, quantity: float, unit: str, crop_type: CropType) -> int | None:
-    """Estimate tables from past harvests; None when there is no history or no mass unit."""
-    average = average_yield_kg(db, crop_type.id)
-    if not average or quantity <= 0:
-        return None
+def _kilograms(quantity: float, unit: str) -> float | None:
     try:
-        kilograms = convert_quantity(quantity, unit, "kg")
+        return convert_quantity(quantity, unit, "kg")
     except ValueError:
+        return None
+
+
+def plants_needed(db: Session, quantity: float, unit: str, crop_type: CropType) -> int | None:
+    """Plants to sow from past yield per plant; None without that history or a mass unit."""
+    per_plant = average_yield_per_plant_kg(db, crop_type.id)
+    kilograms = _kilograms(quantity, unit) if quantity > 0 else None
+    if not per_plant or kilograms is None:
+        return None
+    return max(1, math.ceil(round(kilograms / per_plant, 6)))
+
+
+def tables_needed(db: Session, quantity: float, unit: str, crop_type: CropType) -> int | None:
+    """Tables to plant: by plants and free room when yield per plant is known, else by past cycles."""
+    plants = plants_needed(db, quantity, unit, crop_type)
+    if plants is not None:
+        count = 0
+        for space in free_table_spaces(db):
+            if plants <= 0:
+                break
+            plants -= space.free
+            count += 1
+        return count + (math.ceil(plants / DEFAULT_TABLE_CAPACITY) if plants > 0 else 0)
+    average = average_yield_kg(db, crop_type.id)
+    kilograms = _kilograms(quantity, unit) if quantity > 0 else None
+    if not average or kilograms is None:
         return None
     return max(1, math.ceil(round(kilograms / average, 6)))
 
 
 def free_tables(db: Session) -> list[Table]:
-    occupied = select(CropCycle.table_id).where(
-        CropCycle.deleted_at.is_(None), CropCycle.status.not_in(_FREE_STATUSES)
-    )
-    return list(db.scalars(select(Table).where(Table.id.not_in(occupied)).order_by(Table.table_number)).all())
+    """Tables with room for more plants; a harvested table is free only once it is cleaned."""
+    return [space.table for space in free_table_spaces(db)]
 
 
 def _batch_for(db: Session, sow_date: date) -> Batch | None:
@@ -418,7 +439,10 @@ def planting_proposal(db: Session, order: SalesOrder, line: SalesOrderLine) -> d
     sow_date = today_bangkok()
     to_plant = open_coverage(db).get(line.id, Coverage()).to_plant
     needed = tables_needed(db, to_plant, line.unit, crop_type)
-    available = free_tables(db)
+    plants = plants_needed(db, to_plant, line.unit, crop_type)
+    spaces = free_table_spaces(db)
+    available = [{"id": space.table.id, "table_number": space.table.table_number,
+                  "capacity_plants": space.capacity, "free_plants": space.free} for space in spaces]
     ready_date = sow_date + timedelta(days=crop_type.nursery_days + crop_type.growth_days)
     return {
         "line_id": line.id,
@@ -432,8 +456,9 @@ def planting_proposal(db: Session, order: SalesOrder, line: SalesOrderLine) -> d
         "expected_ready_date": ready_date,
         "is_late": ready_date + timedelta(days=order.safety_days) > line.delivery_date,
         "tables_needed": needed,
+        "plants_needed": plants,
         "free_tables": available,
-        "suggested_table_ids": [table.id for table in available[: needed or 1]],
+        "suggested_table_ids": [table["id"] for table in available[: needed or 1]],
         "can_create": planting_ready(db, order, line),
     }
 
@@ -449,16 +474,24 @@ def create_cycles_for_line(
         raise OrderConflict("Planting task is not completed or crop cycles already exist")
     if len(set(table_ids)) != len(table_ids):
         raise ValueError("Duplicate table")
-    if not set(table_ids) <= {table.id for table in free_tables(db)}:
+    room = {space.table.id: space.free for space in free_table_spaces(db)}
+    if not set(table_ids) <= set(room):
         raise OrderConflict("A selected table is not free")
+    to_plant = open_coverage(db).get(line.id, Coverage()).to_plant
+    plants_left = plants_needed(db, to_plant, line.unit, crop_type)
     batch = _batch_for(db, nursery_start)
     if batch is None:
         raise ValueError("No batch is available")
     cycles = []
     for table_id in table_ids:
+        # With a known yield per plant, fill each table's free room until the order is covered.
+        plant_count = None
+        if plants_left is not None:
+            plant_count = max(0, min(room[table_id], plants_left))
+            plants_left -= plant_count
         cycle = CropCycle(
             table_id=table_id, batch_id=batch.id, crop_type_id=crop_type.id,
-            nursery_start=nursery_start, status=CycleStatus.nursery,
+            nursery_start=nursery_start, status=CycleStatus.nursery, plant_count=plant_count or None,
         )
         db.add(cycle)
         db.flush()

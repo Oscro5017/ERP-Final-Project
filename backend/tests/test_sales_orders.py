@@ -162,7 +162,11 @@ def test_tables_needed_uses_harvest_history_only(env):
     order = env.order()
     assert order["lines"][0]["tables_needed"] == 3
     env.done(order)
-    assert env.get(f"/sales-orders/lines/{order['lines'][0]['id']}/planting")["suggested_table_ids"] == [1, 2, 3]
+    url = f"/sales-orders/lines/{order['lines'][0]['id']}/planting"
+    # A harvested table is free again only once it has been cleaned.
+    assert env.get(url)["suggested_table_ids"] == [2, 3]
+    env.post("/activities", {"kind": "cleanup", "done_on": str(today_bangkok()), "table_ids": [1]})
+    assert env.get(url)["suggested_table_ids"] == [1, 2, 3]
 
 
 def test_edit_moves_task_and_removes_line_task(env):

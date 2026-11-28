@@ -10,6 +10,38 @@ class TableResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     table_number: int
+    capacity_plants: int = 200
+    free_plants: int | None = None
+
+
+class TableUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    capacity_plants: int = Field(gt=0, le=100000)
+
+
+class TableCycleResponse(BaseModel):
+    id: int
+    cycle_code: str
+    crop_type_id: int
+    crop_name: str
+    status: str
+    plants: int
+    plant_count: int | None = None
+    nursery_start: date
+    days_since_sowing: int
+    expected_ready_on: date | None = None
+    awaiting_cleanup: bool
+
+
+class TableBoardResponse(BaseModel):
+    id: int
+    table_number: int
+    capacity_plants: int
+    used_plants: int
+    free_plants: int
+    # ready (ว่างพร้อมปลูก), needs_cleaning (รอล้างโต๊ะ), partial (ว่างบางส่วน), full (เต็ม)
+    state: str
+    cycles: list[TableCycleResponse]
 
 
 class BatchResponse(BaseModel):

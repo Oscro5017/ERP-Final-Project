@@ -4,10 +4,15 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Batch, CropCycle, CropType, CycleStatus, Product, Table
-from ..schemas import BatchResponse, CropTypeProductMappingUpdate, CropTypeResponse, CropTypeUpdate, TableResponse
+from ..schemas import (
+    BatchResponse, CropTypeProductMappingUpdate, CropTypeResponse, CropTypeUpdate, TableBoardResponse, TableCycleResponse,
+    TableResponse, TableUpdate,
+)
 from ..security import get_current_user
 from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
+from ..services.activities import today_bangkok
 from ..services.crop_production import refresh_expected
+from ..services.table_space import table_spaces
 from ..services.task_generator import sync_crop_cycle_tasks
 from ..services.sales_orders import replan_open_orders
 
@@ -17,6 +22,49 @@ router = APIRouter(tags=["reference"])
 @router.get("/tables", response_model=list[TableResponse])
 def list_tables(db: Session = Depends(get_db), _=Depends(get_current_user)):
     return db.scalars(select(Table).order_by(Table.table_number)).all()
+
+
+@router.get("/tables/board", response_model=list[TableBoardResponse])
+def table_board(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    """Every table: what grows on it, how many plants, its stage, and the room left."""
+    today = today_bangkok()
+    board = []
+    for space in table_spaces(db):
+        board.append(TableBoardResponse(
+            id=space.table.id,
+            table_number=space.table.table_number,
+            capacity_plants=space.capacity,
+            used_plants=space.used,
+            free_plants=space.free,
+            state=space.state,
+            cycles=[
+                TableCycleResponse(
+                    id=item.cycle.id,
+                    cycle_code=item.cycle.cycle_code,
+                    crop_type_id=item.cycle.crop_type_id,
+                    crop_name=item.cycle.crop_type.name if item.cycle.crop_type else "",
+                    status=item.cycle.status.value if hasattr(item.cycle.status, "value") else item.cycle.status,
+                    plants=item.plants,
+                    plant_count=item.cycle.plant_count,
+                    nursery_start=item.cycle.nursery_start,
+                    days_since_sowing=(today - item.cycle.nursery_start).days,
+                    expected_ready_on=item.cycle.expected_ready_on,
+                    awaiting_cleanup=item.awaiting_cleanup,
+                )
+                for item in space.cycles
+            ],
+        ))
+    return board
+
+
+@router.patch("/tables/{table_id}", response_model=TableResponse)
+def update_table(table_id: int, payload: TableUpdate, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    table = db.get(Table, table_id)
+    if table is None:
+        raise HTTPException(status_code=404, detail="Table not found")
+    table.capacity_plants = payload.capacity_plants
+    db.commit()
+    return table
 
 
 @router.get("/batches", response_model=list[BatchResponse])
