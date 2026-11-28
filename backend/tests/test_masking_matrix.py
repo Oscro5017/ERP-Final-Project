@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime
 from decimal import Decimal
 import json
@@ -266,7 +267,9 @@ def test_phase2_write_endpoint_responses_mask_owner_and_developer_matrix():
                     role.value, method, path, response.status_code, response.text
                 )
                 if role == Role.developer:
-                    assert not any(marker in response.text for marker in marker_values), (
+                    # Timestamps can contain digits like "55.55"; only data fields matter here.
+                    body = re.sub(r"\d{4}-\d{2}-\d{2}T[\d:.]+", "", response.text)
+                    assert not any(marker in body for marker in marker_values), (
                         method, path, response.text
                     )
                 return response

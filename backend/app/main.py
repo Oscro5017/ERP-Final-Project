@@ -18,10 +18,11 @@ from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
 from .migrations import migrate_activities, migrate_activity_records, migrate_crop_cycles, migrate_production_records, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_rename_tasks_to_activities, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
-from .routers import activities, auth, crop_cycles, customers, dashboard, finance, freshness, insights, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
+from .routers import activities, auth, crop_cycles, customers, dashboard, finance, freshness, insights, notifications, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
 from .seed import seed_database, validate_production_default_passwords
 from .services.encryption_canary import ensure_encryption_canary
 from .services.crop_production import advance_ready_cycles
+from .services.notifications import run_morning_reminders
 from .services.sales_orders import replan_open_orders_job
 from .services.weather import (
     capture_forecast_snapshots,
@@ -126,6 +127,14 @@ def run_stage_job():
     _run_scheduled_job("crop stage update", advance_stages_job)
 
 
+def morning_reminders_job(db):
+    return run_morning_reminders(db, get_settings())
+
+
+def run_reminders_job():
+    _run_scheduled_job("morning reminders", morning_reminders_job)
+
+
 def register_order_jobs(target_scheduler, settings) -> None:
     target_scheduler.add_job(
         run_order_replan_job,
@@ -140,6 +149,15 @@ def register_order_jobs(target_scheduler, settings) -> None:
         run_stage_job,
         CronTrigger(hour=0, minute=5, timezone=settings.farm_timezone),
         id="crop_stage_daily",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=settings.scheduler_misfire_grace_seconds,
+    )
+    target_scheduler.add_job(
+        run_reminders_job,
+        CronTrigger(hour=settings.notify_hour, minute=settings.notify_minute, timezone=settings.farm_timezone),
+        id="morning_reminders_daily",
         replace_existing=True,
         coalesce=True,
         max_instances=1,
@@ -265,6 +283,7 @@ def create_app(settings=None) -> FastAPI:
     api.include_router(freshness.router)
     api.include_router(insights.router)
     api.include_router(activities.router)
+    api.include_router(notifications.router)
     api.include_router(preferences.router)
     api.include_router(products.router)
     api.include_router(sales_orders.router)

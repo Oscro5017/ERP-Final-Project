@@ -25,6 +25,8 @@ const apiPrefixes = [
   '/finance',
   '/dashboard',
   '/insights',
+  '/notifications',
+  '/push-devices',
 ];
 
 // Opening or refreshing a page in the browser asks for HTML, so pages such as /insights or /finance

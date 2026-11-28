@@ -43,10 +43,15 @@ class Settings(BaseSettings):
     weather_forecast_cache_seconds: int = 900
     weather_forecast_empty_cache_seconds: int = 30
     scheduler_misfire_grace_seconds: int = 21_600
+    # Firebase service-account JSON for pushes to the owner's phone; keep it outside git.
+    fcm_credentials_file: str | None = None
+    notify_hour: int = Field(default=8, ge=0, le=23)
+    notify_minute: int = Field(default=0, ge=0, le=59)
+    notify_lead_days: int = Field(default=2, ge=0, le=14)
 
     model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
-    @field_validator("enable_docs", "device_token", "initial_owner_password", "initial_developer_password", "backup_dir", mode="before")
+    @field_validator("enable_docs", "device_token", "initial_owner_password", "initial_developer_password", "backup_dir", "fcm_credentials_file", mode="before")
     @classmethod
     def empty_optional_values_are_unset(cls, value):
         if isinstance(value, str) and not value.strip():
@@ -67,6 +72,11 @@ class Settings(BaseSettings):
     @classmethod
     def directory_starts_at_project_root(cls, value: str) -> str:
         return _from_root(value)
+
+    @field_validator("fcm_credentials_file")
+    @classmethod
+    def credentials_start_at_project_root(cls, value: str | None) -> str | None:
+        return _from_root(value) if value else value
 
     @model_validator(mode="after")
     def validate_encryption_key(self):

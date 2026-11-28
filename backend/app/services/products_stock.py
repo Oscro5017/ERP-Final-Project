@@ -126,6 +126,7 @@ def sync_product_low_stock_reminder(db: Session, product: Product) -> None:
         db.add(Activity(
             title=encrypt_text(f"ของใกล้หมด: {name.value}" if not name.decrypt_failed else f"ของใกล้หมด #{product.id}"),
             kind="stock_alert",
+            remind=True,
             planned_date=datetime.now(_BANGKOK).date(),
             status="pending",
             source="auto",

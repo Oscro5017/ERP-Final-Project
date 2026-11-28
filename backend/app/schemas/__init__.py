@@ -102,6 +102,7 @@ from .sales_orders import (
     PlantingCreateResponse,
 )
 from .preferences import AutomationKey, AutomationPreferenceUpdate
+from .notifications import NotificationResponse, PushDeviceRegister
 from .weather import (
     WeatherForecastDay,
     WeatherLogResponse,

@@ -29,3 +29,7 @@ build/
 .presentation-build/
 presentation-output/
 .codex-finalizer/
+
+# Firebase service-account keys for push notifications
+secrets/
+*firebase-adminsdk*.json
