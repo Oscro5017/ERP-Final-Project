@@ -11,10 +11,10 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import CropCycle, LotExpiryOverride, Product, ProductShelfLife, StockMovement, StockWaste, utc_now
+from ..models import CropCycle, HarvestEntry, LotExpiryOverride, Product, ProductShelfLife, StockMovement, StockWaste, utc_now
 from .products_stock import convert_quantity, record_movement, void_source_movements
 from .secure_fields import encrypt_text, present_text_safe
-from .source_types import CROP_CYCLE_HARVEST, STOCK_DOCUMENT, STOCK_WASTE
+from .source_types import CROP_CYCLE_HARVEST, HARVEST_ENTRY, STOCK_DOCUMENT, STOCK_WASTE
 
 _BANGKOK = ZoneInfo("Asia/Bangkok")
 _Q = Decimal("0.001")
@@ -65,6 +65,8 @@ def lot_key(movement: StockMovement) -> str:
     # Harvest movements are re-created when the harvest is edited, so key them by cycle.
     if movement.source_type == CROP_CYCLE_HARVEST and movement.source_id is not None:
         return f"harvest-{movement.source_id}"
+    if movement.source_type == HARVEST_ENTRY and movement.source_id is not None:
+        return f"harvest-entry-{movement.source_id}"
     return f"movement-{movement.id}"
 
 
@@ -91,6 +93,13 @@ def build_lots(db: Session, setting: ProductShelfLife) -> tuple[list[Lot], dict[
     harvest_dates = dict(
         db.execute(select(CropCycle.id, CropCycle.harvest_date).where(CropCycle.id.in_(cycle_ids))).all()
     ) if cycle_ids else {}
+    entry_ids = [m.source_id for m in movements if m.source_type == HARVEST_ENTRY and m.source_id is not None]
+    entries = {
+        row.id: (row.harvested_on, row.crop_cycle_id)
+        for row in db.execute(select(HarvestEntry.id, HarvestEntry.harvested_on, HarvestEntry.crop_cycle_id).where(
+            HarvestEntry.id.in_(entry_ids)
+        ))
+    } if entry_ids else {}
     overrides = {
         row.lot_key: row.expires_on
         for row in db.scalars(select(LotExpiryOverride).where(LotExpiryOverride.product_id == setting.product_id))
@@ -110,7 +119,12 @@ def build_lots(db: Session, setting: ProductShelfLife) -> tuple[list[Lot], dict[
             continue
         key = lot_key(movement)
         is_harvest = movement.source_type == CROP_CYCLE_HARVEST
-        received_on = (harvest_dates.get(movement.source_id) if is_harvest else None) or _local_date(movement.occurred_at)
+        entry = entries.get(movement.source_id) if movement.source_type == HARVEST_ENTRY else None
+        received_on = (
+            (harvest_dates.get(movement.source_id) if is_harvest else None)
+            or (entry[0] if entry else None)
+            or _local_date(movement.occurred_at)
+        )
         quantity = _dec(movement.quantity_delta)
         lots[key] = Lot(
             key=key,
@@ -119,7 +133,7 @@ def build_lots(db: Session, setting: ProductShelfLife) -> tuple[list[Lot], dict[
             expires_on=overrides.get(key) or received_on + timedelta(days=setting.shelf_life_days),
             received=quantity,
             remaining=quantity,
-            cycle_id=movement.source_id if is_harvest else None,
+            cycle_id=movement.source_id if is_harvest else (entry[1] if entry else None),
             expiry_overridden=key in overrides,
         )
 

@@ -103,8 +103,9 @@ def main():
         green = item("vegetable", "กรีนโอ๊ค", "kg")
         red = item("vegetable", "เรดโอ๊ค", "kg")
         frilly = item("vegetable", "ฟริลไอซ์เบิร์ก", "kg")
-        seed_green = item("seed", "เมล็ดกรีนโอ๊ค", "ซอง", 25)
-        seed_red = item("seed", "เมล็ดเรดโอ๊ค", "ซอง", 10)
+        # Seeds come in bags of about 400 but are counted one by one.
+        seed_green = item("seed", "เมล็ดกรีนโอ๊ค", "เมล็ด", 2000)
+        seed_red = item("seed", "เมล็ดเรดโอ๊ค", "เมล็ด", 800)
         fert_a = item("fertilizer", "ปุ๋ย A", "ลิตร", 10)
         fert_b = item("fertilizer", "ปุ๋ย B", "ลิตร", 10)
         neem = item("chemical", "สารสะเดา", "มล.", 200)
@@ -114,6 +115,8 @@ def main():
         crop_types = {crop["name"]: crop["id"] for crop in call("GET", "/crop-types")}
         for name, product in crop_products.items():
             patch(f"/crop-types/{crop_types[name]}/product-mapping", {"product_id": product})
+        for name, seed in {"Green Oak": seed_green, "Red Oak": seed_red}.items():
+            patch(f"/crop-types/{crop_types[name]}", {"seed_product_id": seed})
         for product in crop_products.values():
             put(f"/freshness/products/{product}", {"shelf_life_days": 5, "warn_days": 1})
 
@@ -132,7 +135,7 @@ def main():
                 "lines": [{"product_id": product, "quantity": quantity, "unit_price": price} for product, quantity, price in lines],
             })
 
-        receive(-62, shop, [(seed_green, 20, "35"), (seed_red, 12, "35"), (sponge, 300, "1.5")], reference="INV-6801")
+        receive(-62, shop, [(seed_green, 8000, "0.09"), (seed_red, 4800, "0.09"), (sponge, 300, "1.5")], reference="INV-6801")
         receive(-45, fertiliser_co, [(fert_a, 20, "120"), (fert_b, 20, "110"), (neem, 1000, "0.5")], reference="PT-2231")
         mistake = receive(-44, fertiliser_co, [(fert_a, 5, "120")], reference="PT-2232")
         post(f"/trade/documents/{mistake['id']}/void", {"reason": "บันทึกซ้ำกับ PT-2231"})
@@ -146,7 +149,7 @@ def main():
             (12, "Frilly", -50, "harvested", 9.0),
             (13, "Green Oak", -45, "harvested", 6.8),
             (14, "Red Oak", -43, "harvested", 5.5),
-            (15, "Frilly", -41, "ready_to_harvest", None),
+            (15, "Frilly", -41, "harvesting", 2.5),
             (16, "Green Oak", -30, "bushed", None),
             (17, "Red Oak", -25, "bushed", None),
             (18, "Frilly", -20, "bushed", None),
@@ -160,15 +163,20 @@ def main():
         for table, crop, start, status, harvest in stages:
             cycle = post("/crop-cycles", {
                 "table_id": tables[table], "batch_id": batch, "crop_type_id": crop_types[crop], "nursery_start": day(start),
-                "create_tasks": True,
+                "seed_count": 220, "create_tasks": True,
             })["id"]
             cycles[table] = cycle
             if status != "nursery":
-                patch(f"/crop-cycles/{cycle}", {"status": "bushed", "transplant_date": day(start + 14)})
-            if status in ("ready_to_harvest", "harvested"):
+                post(f"/crop-cycles/{cycle}/status", {"status": "bushed", "on_date": day(start + 14), "plant_count": 190 + table % 7})
+            if status in ("ready_to_harvest", "harvesting", "harvested"):
                 patch(f"/crop-cycles/{cycle}", {"status": "ready_to_harvest"})
+            if status == "harvesting":
+                post(f"/crop-cycles/{cycle}/harvests", {"harvested_on": day(-1), "quantity_kg": harvest})
             if status == "harvested":
-                patch(f"/crop-cycles/{cycle}", {"status": "harvested", "harvest_date": day(start + 42), "harvest_quantity_kg": harvest})
+                # Picked over two days, as the farm usually does.
+                first = round(harvest * 0.6, 1)
+                post(f"/crop-cycles/{cycle}/harvests", {"harvested_on": day(start + 41), "quantity_kg": first})
+                post(f"/crop-cycles/{cycle}/harvests", {"harvested_on": day(start + 42), "quantity_kg": round(harvest - first, 1), "final": True})
 
         # Fertiliser and spray activities, which also take stock out.
         def apply(tables_used, offset, kind, items, note=None, status="done"):

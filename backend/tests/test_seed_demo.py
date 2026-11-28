@@ -25,7 +25,9 @@ def test_demo_database_covers_every_area(tmp_path):
         assert count("products") == 10
         assert count("crop_cycles", "deleted_at is null") == 12
         assert {row[0] for row in db.execute("select status from crop_cycles where deleted_at is null")} == {
-            "nursery", "bushed", "ready_to_harvest", "harvested"}
+            "nursery", "bushed", "harvesting", "harvested"}
+        assert count("harvest_entries", "voided_at is null") == 11
+        assert count("activities", "kind = 'nursery'") == 12
         assert count("stock_documents", "status = 'void'") == 1
         assert count("sales_orders") == 5
         assert count("stock_waste") == 1

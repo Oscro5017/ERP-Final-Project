@@ -3,10 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Batch, CropCycle, CropType, Product, Table
-from ..schemas import BatchResponse, CropTypeProductMappingUpdate, CropTypeResponse, TableResponse
+from ..models import Batch, CropCycle, CropType, CycleStatus, Product, Table
+from ..schemas import BatchResponse, CropTypeProductMappingUpdate, CropTypeResponse, CropTypeUpdate, TableResponse
 from ..security import get_current_user
 from ..services.crop_cycle_stock import sync_crop_cycle_harvest_stock
+from ..services.crop_production import refresh_expected
+from ..services.task_generator import sync_crop_cycle_tasks
 from ..services.sales_orders import replan_open_orders
 
 router = APIRouter(tags=["reference"])
@@ -61,3 +63,38 @@ def update_crop_type_product_mapping(
     response = CropTypeResponse.model_validate(crop_type)
     response.warnings = sorted(warnings)
     return response
+
+
+@router.patch("/crop-types/{crop_type_id}", response_model=CropTypeResponse)
+def update_crop_type(
+    crop_type_id: int,
+    payload: CropTypeUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Stage lengths and the seed item; cycles still growing follow the new lengths."""
+    crop_type = db.get(CropType, crop_type_id)
+    if crop_type is None:
+        raise HTTPException(status_code=404, detail="Crop type not found")
+    changes = payload.model_dump(exclude_unset=True)
+    if changes.get("seed_product_id") is not None:
+        product = db.get(Product, changes["seed_product_id"])
+        if product is None or product.deleted_at is not None or not product.is_active:
+            raise HTTPException(status_code=422, detail="Product is not available")
+    for field, value in changes.items():
+        if field in {"nursery_days", "growth_days"} and value is None:
+            continue
+        setattr(crop_type, field, value)
+    db.flush()
+    if {"nursery_days", "growth_days"} & set(changes):
+        growing = db.scalars(select(CropCycle).where(
+            CropCycle.crop_type_id == crop_type_id,
+            CropCycle.deleted_at.is_(None),
+            CropCycle.status.in_((CycleStatus.nursery, CycleStatus.bushed)),
+        )).all()
+        for cycle in growing:
+            refresh_expected(db, cycle, {"crop_type_id"})
+            sync_crop_cycle_tasks(db, cycle)
+        replan_open_orders(db)
+    db.commit()
+    return CropTypeResponse.model_validate(crop_type)

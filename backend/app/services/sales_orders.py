@@ -26,7 +26,7 @@ from ..models import (
 from ..query_helpers import get_active
 from ..schemas import OutboundDocumentCreate
 from .crop_cycle_options import save_cycle_options
-from .crop_cycle_lifecycle import sync_crop_cycle_lifecycle
+from .crop_production import start_cycle
 from .finance_entries import create_auto_finance_for_document
 from .order_supply import Coverage, average_yield_kg, delivered_quantity, open_coverage
 from .products_stock import convert_quantity
@@ -36,7 +36,7 @@ from .task_finance import void_task_finance
 
 _BANGKOK = ZoneInfo("Asia/Bangkok")
 _QUANTITY = Decimal("0.001")
-_FREE_STATUSES = (CycleStatus.harvested, CycleStatus.empty)
+_FREE_STATUSES = (CycleStatus.harvested,)
 
 
 class OrderConflict(Exception):
@@ -463,7 +463,7 @@ def create_cycles_for_line(
         db.add(cycle)
         db.flush()
         save_cycle_options(db, cycle.id, {"create_tasks": create_tasks})
-        sync_crop_cycle_lifecycle(db, cycle, created=True)
+        start_cycle(db, cycle)
         db.add(SalesOrderCycle(line_id=line.id, cycle_id=cycle.id))
         cycles.append(cycle)
     replan_open_orders(db)

@@ -30,7 +30,7 @@ _BANGKOK = ZoneInfo("Asia/Bangkok")
 _Q = Decimal("0.001")
 _ZERO = Decimal("0")
 _YIELD_SAMPLE = 20
-_GROWING = (CycleStatus.nursery, CycleStatus.bushed, CycleStatus.ready_to_harvest)
+_GROWING = (CycleStatus.nursery, CycleStatus.bushed, CycleStatus.ready_to_harvest, CycleStatus.harvesting)
 
 
 def today_bangkok() -> date:
@@ -98,8 +98,10 @@ def _in_product_unit(kilograms: float | None, product: Product) -> Decimal | Non
 
 
 def _ready_date(cycle: CropCycle, crop_type: CropType, today: date) -> date:
-    if cycle.status == CycleStatus.ready_to_harvest:
+    if cycle.status in (CycleStatus.ready_to_harvest, CycleStatus.harvesting):
         return today
+    if cycle.expected_ready_on is not None:
+        return max(today, cycle.expected_ready_on)
     transplanted = cycle.transplant_date or cycle.nursery_start + timedelta(days=crop_type.nursery_days)
     return max(today, transplanted + timedelta(days=crop_type.growth_days))
 
@@ -176,7 +178,15 @@ def product_coverage(db: Session, product: Product) -> dict[int, Coverage]:
                 elif owner is not None or setting is not None:
                     ready = _ready_date(cycle, crop_type, today)
                     good_until = ready + timedelta(days=setting.shelf_life_days) if setting else None
-                    sources.append(_Source("growing", average, ready, good_until, owner))
+                    # Part of a cycle still being harvested is already in stock.
+                    picked = _in_product_unit(cycle.harvest_quantity_kg, product) if cycle.status == CycleStatus.harvesting else None
+                    expected = max(_ZERO, average - (picked or _ZERO))
+                    if expected > 0:
+                        sources.append(_Source("growing", expected, ready, good_until, owner))
+                if owner is not None and setting is None and cycle.status == CycleStatus.harvesting:
+                    picked = _in_product_unit(cycle.harvest_quantity_kg, product)
+                    if picked:
+                        sources.append(_Source("stock", picked, today, None, owner))
             elif owner is not None and setting is None and cycle.status == CycleStatus.harvested:
                 harvested = _in_product_unit(cycle.harvest_quantity_kg, product)
                 if harvested:

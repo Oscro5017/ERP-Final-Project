@@ -9,10 +9,10 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.migrations import migrate_crop_type_product_mapping
-from app.models import Batch, CropCycle, CropType, Product, Role, StockMovement, Table, User
+from app.models import HarvestEntry, Batch, CropCycle, CropType, Product, Role, StockMovement, Table, User
 from app.security import get_current_user
 from app.services.products_stock import on_hand
-from app.services.source_types import CROP_CYCLE_HARVEST
+from app.services.source_types import HARVEST_ENTRY
 
 
 def make_db():
@@ -100,15 +100,16 @@ def test_harvest_create_writes_one_positive_linked_movement_and_repeat_is_idempo
         response = create_cycle(client, 12.5)
         cycle_id = response.json()["id"]
         with Session() as db:
-            movements = db.scalars(select(StockMovement).where(StockMovement.source_type == CROP_CYCLE_HARVEST)).all()
+            movements = db.scalars(select(StockMovement).where(StockMovement.source_type == HARVEST_ENTRY)).all()
             assert len(movements) == 1
-            assert movements[0].source_id == cycle_id
+            # One receipt per harvest entry; the entry belongs to the cycle.
+            assert db.get(HarvestEntry, movements[0].source_id).crop_cycle_id == cycle_id
             assert movements[0].movement_type == "receipt"
             assert movements[0].quantity_delta == 12.5
             assert on_hand(db, product_id) == 12.5
         assert client.patch(f"/crop-cycles/{cycle_id}", json={"harvest_quantity_kg": 12.5}).status_code == 200
         with Session() as db:
-            assert len(db.scalars(select(StockMovement).where(StockMovement.source_type == CROP_CYCLE_HARVEST, StockMovement.voided_at.is_(None))).all()) == 1
+            assert len(db.scalars(select(StockMovement).where(StockMovement.source_type == HARVEST_ENTRY, StockMovement.voided_at.is_(None))).all()) == 1
             assert on_hand(db, product_id) == 12.5
 
 
@@ -132,7 +133,7 @@ def test_edit_quantity_voids_old_and_records_new_movement():
         cycle_id = create_cycle(client, 5).json()["id"]
         assert client.patch(f"/crop-cycles/{cycle_id}", json={"harvest_quantity_kg": 8.25}).status_code == 200
         with Session() as db:
-            entries = db.scalars(select(StockMovement).where(StockMovement.source_type == CROP_CYCLE_HARVEST).order_by(StockMovement.id)).all()
+            entries = db.scalars(select(StockMovement).where(StockMovement.source_type == HARVEST_ENTRY).order_by(StockMovement.id)).all()
             assert len(entries) == 2 and entries[0].voided_at is not None and entries[1].voided_at is None
             assert on_hand(db, product_id) == 8.25
 
@@ -147,7 +148,7 @@ def test_clearing_harvest_quantity_voids_existing_movement(quantity):
         response = client.patch(f"/crop-cycles/{cycle_id}", json={"harvest_quantity_kg": quantity})
         assert response.status_code == 200
         with Session() as db:
-            movement = db.scalar(select(StockMovement).where(StockMovement.source_type == CROP_CYCLE_HARVEST))
+            movement = db.scalar(select(StockMovement).where(StockMovement.source_type == HARVEST_ENTRY))
             assert movement.voided_at is not None
             assert on_hand(db, product_id) == 0
 

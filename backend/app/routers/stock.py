@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import (
     CropCycle,
     Activity,
+    HarvestEntry,
     Product,
     STOCK_MOVEMENT_TYPES,
     StockDocument,
@@ -23,7 +24,7 @@ from ..schemas import (
 )
 from ..security import get_current_user
 from ..services.secure_fields import present_text_safe
-from ..services.source_types import ACTIVITY, CROP_CYCLE_HARVEST, STOCK_DOCUMENT
+from ..services.source_types import ACTIVITY, CROP_CYCLE_HARVEST, HARVEST_ENTRY, STOCK_DOCUMENT
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 _BANGKOK = ZoneInfo("Asia/Bangkok")
@@ -45,6 +46,9 @@ def _source_label(db: Session, movement: StockMovement) -> str | None:
     if movement.source_type == STOCK_DOCUMENT:
         document = db.get(StockDocument, movement.source_id)
         return document.doc_no if document else None
+    if movement.source_type == HARVEST_ENTRY:
+        entry = db.get(HarvestEntry, movement.source_id)
+        cycle_id = entry.crop_cycle_id if entry else None
     if movement.source_type == ACTIVITY:
         activity = db.get(Activity, movement.source_id)
         if activity is None:

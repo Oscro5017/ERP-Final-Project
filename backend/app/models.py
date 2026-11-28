@@ -29,8 +29,8 @@ class CycleStatus(str, Enum):
     nursery = "nursery"
     bushed = "bushed"
     ready_to_harvest = "ready_to_harvest"
+    harvesting = "harvesting"
     harvested = "harvested"
-    empty = "empty"
 
 
 class User(Base):

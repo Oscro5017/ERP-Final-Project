@@ -2,7 +2,7 @@ import logging
 import os
 import sqlite3
 import subprocess
-from datetime import date
+from datetime import date, timedelta
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -370,7 +370,7 @@ def migrate_crop_cycles(engine: Engine) -> None:
             "transplanted": "bushed",
             "fertilizing": "bushed",
             "treating": "bushed",
-            "cleaning": "empty",
+            "cleaning": "harvested",
         }
         for row in legacy_rows:
             mapped_status = status_map[row["status"]]
@@ -916,5 +916,126 @@ def migrate_activity_records(engine: Engine) -> dict[str, int]:
         logger.info(
             "Activity records: %s targets, %s finish dates, %s input applications (%s items, %s stock movements) converted.",
             counts["targets"], counts["done_dates"], counts["applications"], counts["items"], counts["movements"],
+        )
+    return counts
+
+
+def _as_date(value):
+    if value is None or isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value)[:10])
+
+
+def migrate_production_records(engine: Engine) -> dict[str, int]:
+    """Phase 3 step 3: harvest entries, expected stage dates, and no more 'empty' cycles.
+
+    - A cycle's single harvest figure becomes one harvest entry; its stock receipt and
+      fresh-produce lot follow, so expiry overrides and waste stay attached.
+    - An 'empty' cycle was harvested and its table cleaned: it becomes 'harvested' with a
+      finished cleanup activity, since tables are now free once cleaned.
+    - Cycles without expected dates get them from their crop type.
+    """
+    counts = {"entries": 0, "movements": 0, "lot_keys": 0, "emptied": 0, "expected": 0}
+    tables = set(inspect(engine).get_table_names())
+    if not {"crop_cycles", "harvest_entries", "activities", "activity_targets"} <= tables:
+        return counts
+
+    with engine.begin() as connection:
+        # 1. Single harvest figures become entries.
+        cycles = connection.execute(text("""
+            SELECT cycle.id, cycle.harvest_quantity_kg, cycle.harvest_date, cycle.updated_at, cycle.nursery_start
+            FROM crop_cycles AS cycle
+            WHERE cycle.harvest_quantity_kg > 0
+              AND NOT EXISTS (SELECT 1 FROM harvest_entries AS entry WHERE entry.crop_cycle_id = cycle.id)
+        """)).mappings().all()
+        for cycle in cycles:
+            harvested_on = _as_date(cycle["harvest_date"]) or _as_date(cycle["updated_at"]) or _as_date(cycle["nursery_start"])
+            activity_id = connection.execute(text("""
+                SELECT activity.id FROM activities AS activity
+                JOIN activity_targets AS target ON target.activity_id = activity.id
+                WHERE target.crop_cycle_id = :cycle_id AND activity.kind = 'harvest' AND activity.deleted_at IS NULL
+                ORDER BY activity.id LIMIT 1
+            """), {"cycle_id": cycle["id"]}).scalar()
+            entry_id = connection.execute(text(
+                "INSERT INTO harvest_entries (activity_id, crop_cycle_id, harvested_on, quantity_kg, created_at, updated_at) "
+                "VALUES (:activity_id, :cycle_id, :harvested_on, :quantity, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            ), {
+                "activity_id": activity_id, "cycle_id": cycle["id"],
+                "harvested_on": harvested_on, "quantity": cycle["harvest_quantity_kg"],
+            }).lastrowid
+            counts["entries"] += 1
+            if "stock_movements" in tables:
+                counts["movements"] += connection.execute(text(
+                    "UPDATE stock_movements SET source_type = 'harvest_entry', source_id = :entry_id "
+                    "WHERE source_type = 'crop_cycle_harvest' AND source_id = :cycle_id AND voided_at IS NULL"
+                ), {"entry_id": entry_id, "cycle_id": cycle["id"]}).rowcount or 0
+            for table_name in ("lot_expiry_overrides", "stock_waste"):
+                if table_name in tables:
+                    counts["lot_keys"] += connection.execute(text(
+                        f"UPDATE {table_name} SET lot_key = :new_key WHERE lot_key = :old_key"
+                    ), {"new_key": f"harvest-entry-{entry_id}", "old_key": f"harvest-{cycle['id']}"}).rowcount or 0
+
+        # 2. 'empty' cycles: harvested, and their table cleaned.
+        empty = connection.execute(text(
+            "SELECT cycle.id, cycle.table_id, cycle.harvest_date, cycle.updated_at, cycle.nursery_start, "
+            "tables.table_number FROM crop_cycles AS cycle LEFT JOIN tables ON tables.id = cycle.table_id "
+            "WHERE cycle.status = 'empty'"
+        )).mappings().all()
+        for cycle in empty:
+            cleaned_on = _as_date(cycle["updated_at"]) or _as_date(cycle["harvest_date"]) or _as_date(cycle["nursery_start"])
+            connection.execute(text("UPDATE crop_cycles SET status = 'harvested' WHERE id = :id"), {"id": cycle["id"]})
+            cleanup_id = connection.execute(text("""
+                SELECT activity.id FROM activities AS activity
+                JOIN activity_targets AS target ON target.activity_id = activity.id
+                WHERE target.crop_cycle_id = :cycle_id AND activity.kind = 'cleanup' AND activity.deleted_at IS NULL
+                ORDER BY activity.id LIMIT 1
+            """), {"cycle_id": cycle["id"]}).scalar()
+            table_label = cycle["table_number"] if cycle["table_number"] is not None else ""
+            if cleanup_id is None:
+                cleanup_id = connection.execute(text("""
+                    INSERT INTO activities (kind, cycle_id, title, planned_date, started_on, done_on, status, source,
+                                            remind, is_encrypted, created_at, updated_at)
+                    VALUES ('cleanup', :cycle_id, :title, :day, :day, :day, 'done', 'auto', 0, 0,
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """), {"cycle_id": cycle["id"], "title": f"ทำความสะอาดโต๊ะ {table_label}".strip(),
+                       "day": cleaned_on}).lastrowid
+                connection.execute(text(
+                    "INSERT INTO activity_targets (activity_id, crop_cycle_id, table_id, share, share_is_manual, created_at, updated_at) "
+                    "VALUES (:activity_id, :cycle_id, :table_id, 1.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                ), {"activity_id": cleanup_id, "cycle_id": cycle["id"], "table_id": cycle["table_id"]})
+            else:
+                connection.execute(text(
+                    "UPDATE activities SET status = 'done', done_on = COALESCE(done_on, :day), "
+                    "started_on = COALESCE(started_on, :day) WHERE id = :id"
+                ), {"id": cleanup_id, "day": cleaned_on})
+            connection.execute(text(
+                "INSERT INTO crop_cycle_status_logs (cycle_id, from_status, to_status, changed_at) "
+                "VALUES (:cycle_id, 'empty', 'harvested', CURRENT_TIMESTAMP)"
+            ), {"cycle_id": cycle["id"]})
+            counts["emptied"] += 1
+
+        # 3. Expected stage dates.
+        missing = connection.execute(text("""
+            SELECT cycle.id, cycle.nursery_start, cycle.transplant_date, cycle.expected_transplant_on, cycle.expected_ready_on,
+                   crop.nursery_days, crop.growth_days
+            FROM crop_cycles AS cycle JOIN crop_types AS crop ON crop.id = cycle.crop_type_id
+            WHERE cycle.expected_transplant_on IS NULL OR cycle.expected_ready_on IS NULL
+        """)).mappings().all()
+        for cycle in missing:
+            transplant_on = _as_date(cycle["expected_transplant_on"]) or (
+                _as_date(cycle["nursery_start"]) + timedelta(days=cycle["nursery_days"])
+            )
+            ready_on = _as_date(cycle["expected_ready_on"]) or (
+                (_as_date(cycle["transplant_date"]) or transplant_on) + timedelta(days=cycle["growth_days"])
+            )
+            connection.execute(text(
+                "UPDATE crop_cycles SET expected_transplant_on = :transplant_on, expected_ready_on = :ready_on WHERE id = :id"
+            ), {"transplant_on": transplant_on, "ready_on": ready_on, "id": cycle["id"]})
+            counts["expected"] += 1
+
+    if any(counts.values()):
+        logger.info(
+            "Production records: %s harvest entries (%s stock movements, %s lot keys), %s empty cycles closed, %s expected dates.",
+            counts["entries"], counts["movements"], counts["lot_keys"], counts["emptied"], counts["expected"],
         )
     return counts
