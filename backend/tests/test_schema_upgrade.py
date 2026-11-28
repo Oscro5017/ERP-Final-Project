@@ -10,16 +10,18 @@ from app.migrations import (
     migrate_input_product_mapping, migrate_products_stock,
     migrate_stock_documents, migrate_task_finance_fields,
     migrate_unified_insights, migrate_crop_type_product_mapping,
+    migrate_activities, migrate_rename_tasks_to_activities,
 )
 from app.models import (
     Batch, CropCycle, CropType, Customer, InputApplication, InputItem, Insight, Product,
-    Recommendation, Role, StockMovement, Table, Task, User,
+    Recommendation, Role, StockMovement, Table, Activity, User,
 )
 from app.services.products_stock import on_hand
 from app.services.secure_fields import decrypt_text, encrypt_number, encrypt_text, hash_catalog_name
 
 
 def _run_phase2_migrations(engine):
+    migrate_rename_tasks_to_activities(engine)
     migrate_products_stock(engine)
     migrate_stock_documents(engine)
     migrate_crop_type_product_mapping(engine)
@@ -28,6 +30,7 @@ def _run_phase2_migrations(engine):
     migrate_task_finance_fields(engine)
     migrate_customer_area_encryption(engine)
     migrate_unified_insights(engine)
+    migrate_activities(engine)
 
 
 def test_phase2_migrations_upgrade_populated_phase1e_slice1b_schema_twice(tmp_path):
@@ -68,8 +71,8 @@ def test_phase2_migrations_upgrade_populated_phase1e_slice1b_schema_twice(tmp_pa
                 id=1, cycle_id=1, applied_date=date(2026, 1, 2), category="fertilizer",
                 note_encrypted=encrypt_text("legacy application").encode("ascii"),
             ),
-            Task(
-                id=1, cycle_id=1, title=encrypt_text(task_title), due_date=date(2026, 1, 3),
+            Activity(
+                id=1, cycle_id=1, title=encrypt_text(task_title), planned_date=date(2026, 1, 3),
                 status="pending", source="manual", is_encrypted=True,
             ),
             Recommendation(
@@ -89,8 +92,16 @@ def test_phase2_migrations_upgrade_populated_phase1e_slice1b_schema_twice(tmp_pa
     engine.dispose()
     with sqlite3.connect(tmp_path / "phase1e-slice1b.db") as connection:
         connection.execute("PRAGMA foreign_keys=OFF")
-        for table_name in ("insights", "finance_entries", "stock_document_lines", "stock_documents", "suppliers"):
+        for table_name in (
+            "insights", "finance_entries", "stock_document_lines", "stock_documents", "suppliers",
+            "activity_targets", "activity_items", "harvest_entries", "change_notes", "push_devices", "notifications",
+        ):
             connection.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+        # Before Phase 3 activities were stored as tasks with a due_date.
+        connection.execute("ALTER TABLE activities RENAME TO tasks")
+        connection.execute("ALTER TABLE tasks RENAME COLUMN planned_date TO due_date")
+        for index_name in ("ix_activities_cycle_id", "ix_activities_planned_date", "ix_activities_status", "ix_activities_deleted_at", "ix_activities_kind", "uq_activities_open_stock_alert"):
+            connection.execute(f'DROP INDEX IF EXISTS "{index_name}"')
         legacy_tables = {
             "crop_types": (
                 "id, name, nursery_days, growth_days",
@@ -150,7 +161,7 @@ def test_phase2_migrations_upgrade_populated_phase1e_slice1b_schema_twice(tmp_pa
         assert decrypt_text(db.get(Product, 1).name_encrypted) == product_name
         assert decrypt_text(db.get(Customer, 1).name_encrypted) == customer_name
         assert decrypt_text(db.get(InputItem, 1).item_name_encrypted) == input_name
-        assert decrypt_text(db.get(Task, 1).title) == task_title
+        assert decrypt_text(db.get(Activity, 1).title) == task_title
         assert db.scalar(select(CropType.product_id).where(CropType.id == 1)) is None
         assert db.scalar(select(InputItem.product_id).where(InputItem.id == 1)) is None
         assert db.scalar(select(Customer.area_encrypted).where(Customer.id == 1)) is None
@@ -160,7 +171,9 @@ def test_phase2_migrations_upgrade_populated_phase1e_slice1b_schema_twice(tmp_pa
         assert "LEGACY_INSIGHT_BODY_2E91" in decrypt_text(insights[0].body_encrypted)
         assert db.scalar(text("SELECT COUNT(*) FROM recommendations")) == 1
     assert inspect(engine).has_table("stock_documents")
-    assert {column["name"] for column in inspect(engine).get_columns("tasks")} >= {
-        "labor_cost_encrypted", "worker_count", "extra_cost_encrypted", "stock_alert_product_id"
+    assert "tasks" not in inspect(engine).get_table_names()
+    assert {column["name"] for column in inspect(engine).get_columns("activities")} >= {
+        "labor_cost_encrypted", "worker_count", "extra_cost_encrypted", "stock_alert_product_id",
+        "kind", "planned_date", "started_on", "done_on", "remind", "note_encrypted",
     }
     engine.dispose()

@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Batch, CropCycle, CropType, Role, Table, Task, User
+from app.models import Batch, CropCycle, CropType, Role, Table, Activity, User
 from app.security import hash_password
 
 
@@ -172,7 +172,7 @@ def test_manual_tasks_crud_and_filters():
     assert task_data["status"] == "pending"
 
     with SessionLocal() as db:
-        stored_task = db.get(Task, task_id)
+        stored_task = db.get(Activity, task_id)
         assert stored_task.is_encrypted is True
         assert stored_task.title != "สั่งซื้อฟองน้ำเพาะเมล็ด"
         assert stored_task.title.startswith("gAAAA")

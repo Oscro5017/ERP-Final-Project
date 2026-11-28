@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import CropCycle, Role, Task, User, utc_now
+from ..models import CropCycle, Role, Activity, User, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import TaskCreate, TaskCycleInfo, TaskResponse, TaskUpdate
 from ..security import get_current_user
@@ -15,7 +15,7 @@ from ..services.task_finance import sync_task_finance, void_task_finance
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def build_task_response(task: Task, role: Role, planting: tuple[int, bool] | None = None) -> TaskResponse:
+def build_task_response(task: Activity, role: Role, planting: tuple[int, bool] | None = None) -> TaskResponse:
     cycle_info = None
     if task.cycle:
         table_num = task.cycle.table.table_number if task.cycle.table else None
@@ -30,19 +30,19 @@ def build_task_response(task: Task, role: Role, planting: tuple[int, bool] | Non
     title_result = present_text_safe(
         task.title if task.is_encrypted else None,
         role,
-        table="tasks",
+        table="activities",
         row_id=task.id,
         field="title",
     )
     title = title_result.value if task.is_encrypted else task.title
-    labor_result = present_number_safe(task.labor_cost_encrypted, role, table="tasks", row_id=task.id, field="labor_cost")
-    extra_result = present_number_safe(task.extra_cost_encrypted, role, table="tasks", row_id=task.id, field="extra_cost")
+    labor_result = present_number_safe(task.labor_cost_encrypted, role, table="activities", row_id=task.id, field="labor_cost")
+    extra_result = present_number_safe(task.extra_cost_encrypted, role, table="activities", row_id=task.id, field="extra_cost")
 
     return TaskResponse(
         id=task.id,
         cycle_id=task.cycle_id,
         title=title,
-        due_date=task.due_date,
+        due_date=task.planned_date,
         status=task.status,
         source=task.source,
         labor_cost=labor_result.value,
@@ -69,23 +69,23 @@ def list_tasks(
     if q and user.role != Role.owner:
         raise HTTPException(status_code=403, detail="Task search is available to the owner only")
     query = active_rows(
-        select(Task)
+        select(Activity)
         .options(
-            joinedload(Task.cycle).joinedload(CropCycle.table),
-            joinedload(Task.cycle).joinedload(CropCycle.crop_type),
+            joinedload(Activity.cycle).joinedload(CropCycle.table),
+            joinedload(Activity.cycle).joinedload(CropCycle.crop_type),
         )
-        .order_by(Task.due_date.asc(), Task.id.asc()),
-        Task,
+        .order_by(Activity.planned_date.asc(), Activity.id.asc()),
+        Activity,
     )
 
     if status and status != "all":
-        query = query.where(Task.status == status)
+        query = query.where(Activity.status == status)
 
     if from_date:
-        query = query.where(Task.due_date >= from_date)
+        query = query.where(Activity.planned_date >= from_date)
 
     if to_date:
-        query = query.where(Task.due_date <= to_date)
+        query = query.where(Activity.planned_date <= to_date)
 
     tasks = db.scalars(query).unique().all()
     planting = planting_flags_for_tasks(db, [task.id for task in tasks])
@@ -117,11 +117,12 @@ def create_task(
             raise HTTPException(status_code=404, detail="Crop cycle not found")
 
     task_data = payload.model_dump()
+    task_data["planned_date"] = task_data.pop("due_date")
     task_title = task_data.pop("title")
     labor_cost = task_data.pop("labor_cost")
     extra_cost = task_data.pop("extra_cost")
     is_encrypted = task_data.get("source") == "manual"
-    task = Task(
+    task = Activity(
         **task_data,
         title=encrypt_text(task_title) if is_encrypted else task_title,
         is_encrypted=is_encrypted,
@@ -137,12 +138,12 @@ def create_task(
     # Re-query with relations for cycle_info
     task_with_relations = (
         db.scalars(
-            active_rows(select(Task)
+            active_rows(select(Activity)
             .options(
-                joinedload(Task.cycle).joinedload(CropCycle.table),
-                joinedload(Task.cycle).joinedload(CropCycle.crop_type),
+                joinedload(Activity.cycle).joinedload(CropCycle.table),
+                joinedload(Activity.cycle).joinedload(CropCycle.crop_type),
             )
-            .where(Task.id == task.id), Task)
+            .where(Activity.id == task.id), Activity)
         )
         .unique()
         .first()
@@ -157,7 +158,7 @@ def update_task(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    task = get_active(db, Task, task_id)
+    task = get_active(db, Activity, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -180,7 +181,7 @@ def update_task(
         elif next_source == "auto" and task.is_encrypted:
             title_result = safe_decrypt_text(
                 task.title,
-                table="tasks",
+                table="activities",
                 row_id=task.id,
                 field="title",
             )
@@ -193,6 +194,8 @@ def update_task(
         if field in {"labor_cost", "extra_cost"}:
             token_field = "labor_cost_encrypted" if field == "labor_cost" else "extra_cost_encrypted"
             setattr(task, token_field, encrypt_number(value).encode("ascii") if value is not None else None)
+        elif field == "due_date":
+            task.planned_date = value
         elif field not in {"title", "source"}:
             setattr(task, field, value)
     task.source = next_source
@@ -204,12 +207,12 @@ def update_task(
 
     task_with_relations = (
         db.scalars(
-            active_rows(select(Task)
+            active_rows(select(Activity)
             .options(
-                joinedload(Task.cycle).joinedload(CropCycle.table),
-                joinedload(Task.cycle).joinedload(CropCycle.crop_type),
+                joinedload(Activity.cycle).joinedload(CropCycle.table),
+                joinedload(Activity.cycle).joinedload(CropCycle.crop_type),
             )
-            .where(Task.id == task.id), Task)
+            .where(Activity.id == task.id), Activity)
         )
         .unique()
         .first()
@@ -224,7 +227,7 @@ def delete_task(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    task = get_active(db, Task, task_id)
+    task = get_active(db, Activity, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 

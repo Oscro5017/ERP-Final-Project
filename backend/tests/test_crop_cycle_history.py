@@ -16,7 +16,7 @@ from app.models import (
     InputApplication,
     Role,
     Table,
-    Task,
+    Activity,
     User,
 )
 from app.security import hash_password
@@ -158,7 +158,7 @@ def test_soft_deletes_keep_rows_and_hide_them_from_lists():
             assert db.get(CropCycle, cycle_id).deleted_at is not None
             assert db.get(Customer, customer_id).deleted_at is not None
             assert db.get(InputApplication, application_id).deleted_at is not None
-            assert db.get(Task, task_id).deleted_at is not None
+            assert db.get(Activity, task_id).deleted_at is not None
     finally:
         app.dependency_overrides.clear()
 

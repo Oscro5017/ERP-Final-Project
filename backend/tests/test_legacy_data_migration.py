@@ -63,7 +63,10 @@ def build_legacy_database(path):
 
 
 def make_engine(path):
-    return create_engine(URL.create("sqlite", database=str(path)))
+    engine = create_engine(URL.create("sqlite", database=str(path)))
+    # Startup renames tasks to activities before the legacy migrations run.
+    migrations.migrate_rename_tasks_to_activities(engine)
+    return engine
 
 
 def test_phase1e_migration_encrypts_and_consolidates_legacy_data(tmp_path):
@@ -99,7 +102,7 @@ def test_phase1e_migration_encrypts_and_consolidates_legacy_data(tmp_path):
         assert normalize_catalog_name(decrypt_text(catalog[0][0])) == "café"
         assert (catalog[0][1], catalog[0][2], catalog[0][3]) == ("L", "medicine", 5)
         manual_task, auto_task = connection.exec_driver_sql(
-            "SELECT title, is_encrypted FROM tasks ORDER BY id"
+            "SELECT title, is_encrypted FROM activities ORDER BY id"
         ).all()
         assert decrypt_text(manual_task[0]) == "Private manual task"
         assert manual_task[1] == 1

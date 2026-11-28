@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import FinanceEntry, Task
+from ..models import FinanceEntry, Activity
 from .finance_entries import _now_utc
 from .secure_fields import decrypt_number, encrypt_number, encrypt_text, safe_decrypt_number
 from .source_types import TASK
@@ -15,7 +15,7 @@ def _task_cost(token: bytes | None) -> Decimal | None:
     return decrypt_number(token) if token else None
 
 
-def sync_task_finance(db: Session, task: Task, created_by: int | None = None) -> FinanceEntry | None:
+def sync_task_finance(db: Session, task: Activity, created_by: int | None = None) -> FinanceEntry | None:
     entries = db.scalars(select(FinanceEntry).where(
         FinanceEntry.source_type == TASK,
         FinanceEntry.source_id == task.id,
@@ -35,11 +35,11 @@ def sync_task_finance(db: Session, task: Task, created_by: int | None = None) ->
         current = entries[0]
         decrypted = safe_decrypt_number(current.amount_encrypted, table="finance_entries", row_id=current.id, field="amount")
         same_amount = not decrypted.decrypt_failed and decrypted.value == amount
-        if same_amount and current.crop_cycle_id == task.cycle_id and current.entry_date == task.due_date:
+        if same_amount and current.crop_cycle_id == task.cycle_id and current.entry_date == task.planned_date:
             return current
     _void(entries, "Task financial values updated")
     entry = FinanceEntry(
-        entry_date=task.due_date,
+        entry_date=task.planned_date,
         direction="expense",
         category="labor",
         amount_encrypted=encrypt_number(amount).encode("ascii"),

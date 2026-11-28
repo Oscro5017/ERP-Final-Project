@@ -21,7 +21,7 @@ from app.models import (
     InputItem,
     Role,
     Table,
-    Task,
+    Activity,
 )
 from app.routers import customers, input_applications, tasks
 from app.services import secure_fields
@@ -201,8 +201,8 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
         db.add_all([
             Customer(name_encrypted=good_name.encode(), contact_encrypted=good_contact.encode()),
             Customer(name_encrypted=bad_values["customer_name"].encode(), contact_encrypted=bad_values["customer_contact"].encode()),
-            Task(title=good_task, due_date=date(2026, 11, 6), source="manual", is_encrypted=True),
-            Task(title=bad_values["task"], due_date=date(2026, 11, 6), source="manual", is_encrypted=True),
+            Activity(title=good_task, planned_date=date(2026, 11, 6), source="manual", is_encrypted=True),
+            Activity(title=bad_values["task"], planned_date=date(2026, 11, 6), source="manual", is_encrypted=True),
             Table(table_number=1),
             Batch(batch_number=1, start_date=date(2026, 1, 1), week_offset=0),
             CropType(name="Test Crop", nursery_days=1, growth_days=1),
@@ -229,7 +229,7 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
         ])
         db.commit()
         cycle_id = cycle.id
-        bad_task_id = db.query(Task).filter(Task.title == bad_values["task"]).one().id
+        bad_task_id = db.query(Activity).filter(Activity.title == bad_values["task"]).one().id
 
     client = TestClient(api)
     try:
@@ -269,12 +269,12 @@ def test_corrupt_rows_do_not_break_owner_list_endpoints_or_leak_tokens(monkeypat
         assert catalog_suggestion["last_used_at"] is None
 
         with sessions() as db:
-            db_task = db.get(Task, bad_task_id)
+            db_task = db.get(Activity, bad_task_id)
             stored_bad_title = db_task.title
         transition = client.patch(f"/tasks/{bad_task_id}", json={"source": "auto"})
         assert transition.status_code == 409
         with sessions() as db:
-            assert db.get(Task, bad_task_id).title == stored_bad_title
+            assert db.get(Activity, bad_task_id).title == stored_bad_title
 
         current["role"] = Role.developer
         developer_tasks = client.get("/tasks").json()

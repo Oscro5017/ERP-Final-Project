@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .logging_config import configure_logging
-from .migrations import migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
+from .migrations import migrate_activities, migrate_crop_cycles, migrate_crop_type_product_mapping, migrate_customer_area_encryption, migrate_customer_contact_encryption, migrate_finance_entries, migrate_input_product_mapping, migrate_phase1c, migrate_phase1e, migrate_products_stock, migrate_rename_tasks_to_activities, migrate_stock_documents, migrate_system_meta, migrate_task_finance_fields, migrate_unified_insights
 from .routers import auth, crop_cycles, customers, dashboard, finance, freshness, input_applications, insights, preferences, products, reference, sales_orders, sensors, stock, suppliers, tasks, trade_documents, weather
 from .seed import seed_database, validate_production_default_passwords
 from .services.encryption_canary import ensure_encryption_canary
@@ -139,6 +139,8 @@ async def lifespan(_app: FastAPI):
         validate_production_default_passwords(db, settings)
 
     migrate_system_meta(engine)
+    # Must run before create_all, which would otherwise add an empty activities table beside tasks.
+    migrate_rename_tasks_to_activities(engine)
     migrated_tables = {
         "products", "stock_movements", "suppliers", "stock_documents",
         "stock_document_lines", "finance_entries",
@@ -162,6 +164,7 @@ async def lifespan(_app: FastAPI):
     migrate_phase1c(engine)
     migrate_customer_contact_encryption(engine, backup_dir=settings.backup_dir)
     migrate_phase1e(engine, backup_dir=settings.backup_dir)
+    migrate_activities(engine)
     with SessionLocal() as db:
         seed_database(db, settings=settings)
 

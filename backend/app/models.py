@@ -48,10 +48,17 @@ class SystemMeta(TimestampMixin, Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+DEFAULT_TABLE_CAPACITY = 200
+
+
 class Table(Base):
     __tablename__ = "tables"
     id: Mapped[int] = mapped_column(primary_key=True)
     table_number: Mapped[int] = mapped_column(Integer, unique=True)
+    # Most plants the table can hold; a table does not have to be planted full.
+    capacity_plants: Mapped[int] = mapped_column(
+        Integer, default=DEFAULT_TABLE_CAPACITY, server_default=str(DEFAULT_TABLE_CAPACITY), nullable=False
+    )
 
 
 class Batch(Base):
@@ -70,6 +77,8 @@ class CropType(Base):
     nursery_days: Mapped[int] = mapped_column(Integer)
     growth_days: Mapped[int] = mapped_column(Integer)
     product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    # The seed stock item used when a cycle of this crop starts in the nursery.
+    seed_product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
 
 
 class CropCycle(TimestampMixin, SoftDeleteMixin, Base):
@@ -84,6 +93,11 @@ class CropCycle(TimestampMixin, SoftDeleteMixin, Base):
     status: Mapped[CycleStatus] = mapped_column(SqlEnum(CycleStatus), default=CycleStatus.nursery)
     cycle_code: Mapped[str] = mapped_column(String(6))
     harvest_quantity_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    seed_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    plant_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Dates computed from the crop type; the owner may move them for one cycle.
+    expected_transplant_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_ready_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     table: Mapped[Table] = relationship()
     batch: Mapped[Batch] = relationship()
@@ -335,7 +349,7 @@ class SalesOrderLine(TimestampMixin, Base):
     unit: Mapped[str] = mapped_column(String(80), nullable=False)
     delivery_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     latest_sow_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    planting_task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, unique=True)
+    planting_task_id: Mapped[int | None] = mapped_column(ForeignKey("activities.id", ondelete="SET NULL"), nullable=True, unique=True)
 
 
 class SalesOrderCycle(Base):
@@ -404,38 +418,142 @@ class AutomationPreference(TimestampMixin, Base):
     mode: Mapped[str] = mapped_column(String(8), nullable=False)
 
 
-class TaskStatus(str, Enum):
+class ActivityStatus(str, Enum):
     pending = "pending"
+    in_progress = "in_progress"
     done = "done"
 
 
-class TaskSource(str, Enum):
+class ActivitySource(str, Enum):
     auto = "auto"
     manual = "manual"
 
 
-class Task(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "tasks"
+class ActivityKind(str, Enum):
+    nursery = "nursery"
+    transplant = "transplant"
+    harvest = "harvest"
+    fertilize = "fertilize"
+    spray = "spray"
+    cleanup = "cleanup"
+    general = "general"
+    stock_alert = "stock_alert"
+    order_planting = "order_planting"
+
+
+class Activity(TimestampMixin, SoftDeleteMixin, Base):
+    """Work on the farm, planned or done; finished activities drive stock and costs."""
+    __tablename__ = "activities"
     __table_args__ = (
         Index(
-            "uq_tasks_open_stock_alert",
+            "uq_activities_open_stock_alert",
             "stock_alert_product_id",
             unique=True,
             sqlite_where=text("stock_alert_product_id IS NOT NULL AND status = 'pending' AND deleted_at IS NULL"),
         ),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(
+        String(24), default=ActivityKind.general.value, server_default=ActivityKind.general.value, nullable=False, index=True
+    )
     cycle_id: Mapped[int | None] = mapped_column(ForeignKey("crop_cycles.id", ondelete="CASCADE"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(Text)
-    due_date: Mapped[date] = mapped_column(Date, index=True)
-    status: Mapped[str] = mapped_column(String(20), default=TaskStatus.pending.value, index=True)
-    source: Mapped[str] = mapped_column(String(20), default=TaskSource.manual.value)
+    planned_date: Mapped[date] = mapped_column(Date, index=True)
+    started_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    done_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default=ActivityStatus.pending.value, index=True)
+    source: Mapped[str] = mapped_column(String(20), default=ActivitySource.manual.value)
+    remind: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"), nullable=False)
     is_encrypted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    note_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     labor_cost_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     worker_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     extra_cost_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     stock_alert_product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
-    cycle: Mapped[CropCycle | None] = relationship(backref="tasks")
+    cycle: Mapped[CropCycle | None] = relationship(backref="activities")
+    targets: Mapped[list["ActivityTarget"]] = relationship(back_populates="activity", cascade="all, delete-orphan")
+    items: Mapped[list["ActivityItem"]] = relationship(back_populates="activity", cascade="all, delete-orphan")
+
+
+class ActivityTarget(TimestampMixin, Base):
+    """A crop cycle or table an activity covers; one activity may cover many."""
+    __tablename__ = "activity_targets"
+    __table_args__ = (UniqueConstraint("activity_id", "crop_cycle_id", "table_id", name="uq_activity_targets_target"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id", ondelete="CASCADE"), nullable=False, index=True)
+    crop_cycle_id: Mapped[int | None] = mapped_column(ForeignKey("crop_cycles.id", ondelete="CASCADE"), nullable=True, index=True)
+    table_id: Mapped[int | None] = mapped_column(ForeignKey("tables.id", ondelete="RESTRICT"), nullable=True, index=True)
+    # Portion of the activity's items charged to this cycle; computed from plant counts unless the owner sets it.
+    share: Mapped[float | None] = mapped_column(Float, nullable=True)
+    share_is_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"), nullable=False)
+    activity: Mapped[Activity] = relationship(back_populates="targets")
+
+
+class ActivityItem(TimestampMixin, Base):
+    """A stock item an activity uses, such as seed, fertilizer or pesticide."""
+    __tablename__ = "activity_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True)
+    quantity_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    unit: Mapped[str] = mapped_column(String(80), nullable=False)
+    activity: Mapped[Activity] = relationship(back_populates="items")
+
+
+class HarvestEntry(TimestampMixin, Base):
+    """One pick from a crop cycle; a cycle may be harvested over several days."""
+    __tablename__ = "harvest_entries"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    activity_id: Mapped[int | None] = mapped_column(ForeignKey("activities.id", ondelete="SET NULL"), nullable=True, index=True)
+    crop_cycle_id: Mapped[int] = mapped_column(ForeignKey("crop_cycles.id", ondelete="RESTRICT"), nullable=False, index=True)
+    harvested_on: Mapped[date] = mapped_column(Date, nullable=False)
+    quantity_kg: Mapped[float] = mapped_column(Float, nullable=False)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ChangeNote(Base):
+    """What changed on a record, from what to what, and why."""
+    __tablename__ = "change_notes"
+    __table_args__ = (Index("ix_change_notes_entity", "entity_type", "entity_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    field: Mapped[str] = mapped_column(String(60), nullable=False)
+    old_value_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    new_value_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    reason_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    auto_note_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class PushDevice(TimestampMixin, Base):
+    """A phone registered for push notifications through Firebase Cloud Messaging."""
+    __tablename__ = "push_devices"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class Notification(TimestampMixin, Base):
+    """A reminder kept in the app and, when possible, pushed to the owner's phone."""
+    __tablename__ = "notifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    title_encrypted: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    body_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    activity_id: Mapped[int | None] = mapped_column(ForeignKey("activities.id", ondelete="SET NULL"), nullable=True)
+    crop_cycle_id: Mapped[int | None] = mapped_column(ForeignKey("crop_cycles.id", ondelete="SET NULL"), nullable=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    # Stops the daily job from sending the same reminder twice.
+    dedupe_key: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    push_error: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class WeatherLog(TimestampMixin, Base):
@@ -498,7 +616,7 @@ class Recommendation(TimestampMixin, Base):
     window_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     window_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
-    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("activities.id"), nullable=True)
 
 
 class Insight(TimestampMixin, Base):
@@ -517,7 +635,7 @@ class Insight(TimestampMixin, Base):
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     crop_cycle_id: Mapped[int | None] = mapped_column(ForeignKey("crop_cycles.id", ondelete="SET NULL"), nullable=True)
-    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("activities.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="new", nullable=False)
     legacy_recommendation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

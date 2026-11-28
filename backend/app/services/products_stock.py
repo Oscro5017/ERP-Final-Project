@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from ..models import Product, StockMovement, Task, STOCK_MOVEMENT_TYPES, utc_now
+from ..models import Product, StockMovement, Activity, STOCK_MOVEMENT_TYPES, utc_now
 from .secure_fields import encrypt_text, safe_decrypt_text
 
 _Q = Decimal("0.001")
@@ -107,10 +107,10 @@ def record_movement(
 
 
 def sync_product_low_stock_reminder(db: Session, product: Product) -> None:
-    alerts = db.scalars(select(Task).where(
-        Task.stock_alert_product_id == product.id,
-        Task.status == "pending",
-        Task.deleted_at.is_(None),
+    alerts = db.scalars(select(Activity).where(
+        Activity.stock_alert_product_id == product.id,
+        Activity.status == "pending",
+        Activity.deleted_at.is_(None),
     )).all()
     if product.reorder_point is None:
         for task in alerts:
@@ -123,9 +123,10 @@ def sync_product_low_stock_reminder(db: Session, product: Product) -> None:
         if alerts:
             return
         name = safe_decrypt_text(product.name_encrypted, table="products", row_id=product.id, field="name")
-        db.add(Task(
+        db.add(Activity(
             title=encrypt_text(f"ของใกล้หมด: {name.value}" if not name.decrypt_failed else f"ของใกล้หมด #{product.id}"),
-            due_date=datetime.now(_BANGKOK).date(),
+            kind="stock_alert",
+            planned_date=datetime.now(_BANGKOK).date(),
             status="pending",
             source="auto",
             is_encrypted=True,

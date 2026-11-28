@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.migrations import migrate_unified_insights
-from app.models import Batch, CropCycle, CropType, Insight, Recommendation, Role, Table, Task, User
+from app.models import Batch, CropCycle, CropType, Insight, Recommendation, Role, Table, Activity, User
 from app.security import get_current_user
 from app.services.secure_fields import decrypt_text, encrypt_text
 

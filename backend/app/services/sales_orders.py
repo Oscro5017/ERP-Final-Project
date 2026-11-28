@@ -20,7 +20,7 @@ from ..models import (
     SalesOrderLinePrice,
     SalesOrderOption,
     Table,
-    Task,
+    Activity,
     utc_now,
 )
 from ..query_helpers import get_active
@@ -121,8 +121,8 @@ def active_cycles(db: Session, line_id: int) -> list[CropCycle]:
     ).all())
 
 
-def _planting_task(db: Session, line: SalesOrderLine) -> Task | None:
-    return get_active(db, Task, line.planting_task_id) if line.planting_task_id is not None else None
+def _planting_task(db: Session, line: SalesOrderLine) -> Activity | None:
+    return get_active(db, Activity, line.planting_task_id) if line.planting_task_id is not None else None
 
 
 def _drop_pending_task(db: Session, line: SalesOrderLine) -> None:
@@ -145,11 +145,11 @@ def _sync_line_planting(db: Session, order: SalesOrder, line: SalesOrderLine, to
         return
     # A remembered id whose task is gone means the user deleted the activity: respect that.
     if task is None and line.planting_task_id is None:
-        task = Task(title="", due_date=line.latest_sow_date, status="pending", source="auto")
+        task = Activity(kind="order_planting", title="", planned_date=line.latest_sow_date, status="pending", source="auto")
         db.add(task)
     if task is not None and task.status == "pending":
         task.title = f"เพาะกล้า {crop_type.name} {to_plant:g} {line.unit} ตามออเดอร์ {order.order_no}"
-        task.due_date = line.latest_sow_date
+        task.planned_date = line.latest_sow_date
         db.flush()
         line.planting_task_id = task.id
     db.flush()

@@ -88,9 +88,9 @@ def migrate_finance_entries(engine: Engine) -> None:
 def migrate_task_finance_fields(engine: Engine) -> None:
     """Add optional encrypted task costs and worker count without changing rows."""
     inspector = inspect(engine)
-    if "tasks" not in inspector.get_table_names():
+    if "activities" not in inspector.get_table_names():
         return
-    columns = {column["name"] for column in inspector.get_columns("tasks")}
+    columns = {column["name"] for column in inspector.get_columns("activities")}
     additions = {
         "labor_cost_encrypted": "BLOB",
         "worker_count": "INTEGER",
@@ -100,11 +100,11 @@ def migrate_task_finance_fields(engine: Engine) -> None:
     with engine.begin() as connection:
         for name, column_type in additions.items():
             if name not in columns:
-                connection.execute(text(f"ALTER TABLE tasks ADD COLUMN {name} {column_type}"))
+                connection.execute(text(f"ALTER TABLE activities ADD COLUMN {name} {column_type}"))
     with engine.begin() as connection:
         connection.execute(text(
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_open_stock_alert "
-            "ON tasks(stock_alert_product_id) "
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_activities_open_stock_alert "
+            "ON activities(stock_alert_product_id) "
             "WHERE stock_alert_product_id IS NOT NULL AND status = 'pending' AND deleted_at IS NULL"
         ))
 
@@ -140,7 +140,7 @@ def migrate_unified_insights(engine: Engine) -> None:
             old_status = str(row["status"] or "new").casefold()
             status = old_status if old_status in {"new", "seen", "dismissed", "done"} else ("done" if old_status == "completed" else "new")
             task_id = row["task_id"]
-            cycle_id = connection.scalar(text("SELECT cycle_id FROM tasks WHERE id = :task_id"), {"task_id": task_id}) if task_id else None
+            cycle_id = connection.scalar(text("SELECT cycle_id FROM activities WHERE id = :task_id"), {"task_id": task_id}) if task_id else None
             body_parts = [str(row["message"] or "").strip()]
             reason = str(row["reason"] or "").strip()
             if reason:
@@ -412,7 +412,7 @@ def migrate_phase1c(engine: Engine) -> None:
         "customers": {"created_at": "TIMESTAMP", "updated_at": "TIMESTAMP", "deleted_at": "TIMESTAMP"},
         "input_applications": {"created_at": "TIMESTAMP", "updated_at": "TIMESTAMP", "deleted_at": "TIMESTAMP"},
         "input_items": {"created_at": "TIMESTAMP", "updated_at": "TIMESTAMP"},
-        "tasks": {"updated_at": "TIMESTAMP", "deleted_at": "TIMESTAMP"},
+        "activities": {"updated_at": "TIMESTAMP", "deleted_at": "TIMESTAMP"},
         "weather_logs": {"created_at": "TIMESTAMP", "updated_at": "TIMESTAMP"},
     }
 
@@ -511,7 +511,7 @@ def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dic
 
     inspector = inspect(engine)
     tables = set(inspector.get_table_names())
-    required = {"input_applications", "input_items", "input_catalog", "tasks"}
+    required = {"input_applications", "input_items", "input_catalog", "activities"}
     if not required.issubset(tables):
         return {"input_items": 0, "applications": 0, "catalog": 0, "tasks": 0}
 
@@ -523,7 +523,7 @@ def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dic
         {"item_name", "quantity"} & columns["input_items"],
         "note" in columns["input_applications"],
         "item_name" in columns["input_catalog"],
-        "is_encrypted" not in columns["tasks"],
+        "is_encrypted" not in columns["activities"],
     ))
     if not needs_migration:
         return {"input_items": 0, "applications": 0, "catalog": 0, "tasks": 0}
@@ -540,11 +540,11 @@ def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dic
         item_rows = connection.execute("SELECT * FROM input_items ORDER BY id").fetchall()
         app_rows = connection.execute("SELECT * FROM input_applications ORDER BY id").fetchall()
         catalog_rows = connection.execute("SELECT * FROM input_catalog ORDER BY id").fetchall()
-        task_rows = connection.execute("SELECT * FROM tasks ORDER BY id").fetchall()
+        task_rows = connection.execute("SELECT * FROM activities ORDER BY id").fetchall()
         item_names = [row[1] for row in connection.execute("PRAGMA table_info(input_items)")]
         app_names = [row[1] for row in connection.execute("PRAGMA table_info(input_applications)")]
         catalog_names = [row[1] for row in connection.execute("PRAGMA table_info(input_catalog)")]
-        task_names = [row[1] for row in connection.execute("PRAGMA table_info(tasks)")]
+        task_names = [row[1] for row in connection.execute("PRAGMA table_info(activities)")]
         item_rows = [dict(zip(item_names, row)) for row in item_rows]
         app_rows = [dict(zip(app_names, row)) for row in app_rows]
         catalog_rows = [dict(zip(catalog_names, row)) for row in catalog_rows]
@@ -647,28 +647,28 @@ def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dic
             last_unit VARCHAR(80), last_category VARCHAR(80), last_used_at DATETIME, use_count INTEGER NOT NULL DEFAULT 0
         )""")
         connection.executemany("INSERT INTO input_catalog_phase1e VALUES (?, ?, ?, ?, ?, ?, ?)", encrypted_catalog)
-        connection.execute("""CREATE TABLE tasks_phase1e (
+        connection.execute("""CREATE TABLE activities_phase1e (
             id INTEGER NOT NULL PRIMARY KEY, cycle_id INTEGER REFERENCES crop_cycles(id) ON DELETE CASCADE,
             title TEXT NOT NULL, due_date DATE NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending',
             source VARCHAR(20) NOT NULL DEFAULT 'manual', created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL, deleted_at DATETIME, is_encrypted BOOLEAN NOT NULL DEFAULT 0
         )""")
-        connection.executemany("INSERT INTO tasks_phase1e VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", encrypted_tasks)
+        connection.executemany("INSERT INTO activities_phase1e VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", encrypted_tasks)
 
-        for table in ("input_items", "input_applications", "input_catalog", "tasks"):
+        for table in ("input_items", "input_applications", "input_catalog", "activities"):
             connection.execute(f"DROP TABLE {table}")
         connection.execute("ALTER TABLE input_applications_phase1e RENAME TO input_applications")
         connection.execute("ALTER TABLE input_items_phase1e RENAME TO input_items")
         connection.execute("ALTER TABLE input_catalog_phase1e RENAME TO input_catalog")
-        connection.execute("ALTER TABLE tasks_phase1e RENAME TO tasks")
+        connection.execute("ALTER TABLE activities_phase1e RENAME TO activities")
         connection.execute("CREATE INDEX ix_input_items_application_id ON input_items(application_id)")
         connection.execute("CREATE INDEX ix_input_applications_cycle_id ON input_applications(cycle_id)")
         connection.execute("CREATE INDEX ix_input_applications_deleted_at ON input_applications(deleted_at)")
         connection.execute("CREATE UNIQUE INDEX ix_input_catalog_name_hash ON input_catalog(name_hash)")
-        connection.execute("CREATE INDEX ix_tasks_cycle_id ON tasks(cycle_id)")
-        connection.execute("CREATE INDEX ix_tasks_due_date ON tasks(due_date)")
-        connection.execute("CREATE INDEX ix_tasks_status ON tasks(status)")
-        connection.execute("CREATE INDEX ix_tasks_deleted_at ON tasks(deleted_at)")
+        connection.execute("CREATE INDEX ix_activities_cycle_id ON activities(cycle_id)")
+        connection.execute("CREATE INDEX ix_activities_due_date ON activities(due_date)")
+        connection.execute("CREATE INDEX ix_activities_status ON activities(status)")
+        connection.execute("CREATE INDEX ix_activities_deleted_at ON activities(deleted_at)")
         violations = connection.execute("PRAGMA foreign_key_check").fetchall()
         if violations:
             raise RuntimeError("Phase 1e migration failed foreign-key validation; changes were rolled back.")
@@ -690,3 +690,106 @@ def migrate_phase1e(engine: Engine, backup_dir: Path | str | None = None) -> dic
         counts["input_items"], counts["applications"], counts["tasks"], counts["catalog"],
     )
     return counts
+
+
+_ACTIVITY_COLUMNS = {
+    "kind": "VARCHAR(24) NOT NULL DEFAULT 'general'",
+    "started_on": "DATE",
+    "done_on": "DATE",
+    "remind": "BOOLEAN NOT NULL DEFAULT 0",
+    "note_encrypted": "BLOB",
+    "labor_cost_encrypted": "BLOB",
+    "worker_count": "INTEGER",
+    "extra_cost_encrypted": "BLOB",
+    "stock_alert_product_id": "INTEGER REFERENCES products(id) ON DELETE SET NULL",
+}
+
+# Titles the stage generator used before activities had a kind.
+_LEGACY_STAGE_TITLES = (
+    ("ย้ายปลูก", "transplant"),
+    ("เตรียมเก็บเกี่ยว", "harvest"),
+    ("ทำความสะอาดโต๊ะ", "cleanup"),
+)
+
+
+def migrate_rename_tasks_to_activities(engine: Engine) -> None:
+    """Rename the legacy tasks table before anything creates an empty activities table.
+
+    SQLite 3.26+ rewrites foreign keys in other tables that point at the renamed table.
+    """
+    tables = set(inspect(engine).get_table_names())
+    if "tasks" not in tables or "activities" in tables:
+        return
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE tasks RENAME TO activities"))
+    logger.info("Renamed table tasks to activities.")
+
+
+def migrate_activities(engine: Engine) -> None:
+    """Bring a renamed tasks table up to the activities schema and add the farm-planning columns."""
+    from .models import Activity
+
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    if "activities" not in tables:
+        return
+
+    with engine.begin() as connection:
+        columns = {column["name"] for column in inspect(connection).get_columns("activities")}
+        if "due_date" in columns and "planned_date" not in columns:
+            connection.execute(text("ALTER TABLE activities RENAME COLUMN due_date TO planned_date"))
+        for name, column_type in _ACTIVITY_COLUMNS.items():
+            if name not in columns:
+                connection.execute(text(f"ALTER TABLE activities ADD COLUMN {name} {column_type}"))
+
+        # Indexes named after the old table are replaced by the model's indexes.
+        legacy_indexes = connection.execute(text(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'activities' "
+            "AND (name LIKE 'ix_tasks_%' OR name LIKE 'uq_tasks_%' OR name = 'ix_activities_due_date')"
+        )).scalars().all()
+        for name in legacy_indexes:
+            connection.execute(text(f'DROP INDEX "{name}"'))
+        for index in Activity.__table__.indexes:
+            index.create(connection, checkfirst=True)
+
+        _backfill_activity_kinds(connection)
+
+        cycle_columns = {column["name"] for column in inspect(connection).get_columns("crop_cycles")} if "crop_cycles" in tables else set()
+        for name, column_type in {
+            "seed_count": "INTEGER",
+            "plant_count": "INTEGER",
+            "expected_transplant_on": "DATE",
+            "expected_ready_on": "DATE",
+        }.items():
+            if cycle_columns and name not in cycle_columns:
+                connection.execute(text(f"ALTER TABLE crop_cycles ADD COLUMN {name} {column_type}"))
+
+        if "crop_types" in tables:
+            crop_type_columns = {column["name"] for column in inspect(connection).get_columns("crop_types")}
+            if "seed_product_id" not in crop_type_columns:
+                connection.execute(text(
+                    "ALTER TABLE crop_types ADD COLUMN seed_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL"
+                ))
+
+        if "tables" in tables:
+            table_columns = {column["name"] for column in inspect(connection).get_columns("tables")}
+            if "capacity_plants" not in table_columns:
+                connection.execute(text("ALTER TABLE tables ADD COLUMN capacity_plants INTEGER NOT NULL DEFAULT 200"))
+
+
+def _backfill_activity_kinds(connection) -> None:
+    """Give activities created before kinds existed the kind their origin implies."""
+    connection.execute(text(
+        "UPDATE activities SET kind = 'stock_alert' "
+        "WHERE kind = 'general' AND stock_alert_product_id IS NOT NULL"
+    ))
+    if inspect(connection).has_table("sales_order_lines"):
+        connection.execute(text(
+            "UPDATE activities SET kind = 'order_planting' WHERE kind = 'general' "
+            "AND id IN (SELECT planting_task_id FROM sales_order_lines WHERE planting_task_id IS NOT NULL)"
+        ))
+    for prefix, kind in _LEGACY_STAGE_TITLES:
+        connection.execute(text(
+            "UPDATE activities SET kind = :kind WHERE kind = 'general' AND source = 'auto' "
+            "AND is_encrypted = 0 AND cycle_id IS NOT NULL AND title LIKE :pattern"
+        ), {"kind": kind, "pattern": f"{prefix}%"})

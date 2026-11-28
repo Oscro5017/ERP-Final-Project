@@ -6,7 +6,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import CropCycle, CycleStatus, FinanceEntry, Product, Role, StockMovement, Task, User
+from ..models import CropCycle, CycleStatus, FinanceEntry, Product, Role, StockMovement, Activity, User
 from ..security import get_current_user
 from ..services.secure_fields import present_aggregate, safe_decrypt_number
 
@@ -41,10 +41,10 @@ def dashboard_summary(db: Session = Depends(get_db), user: User = Depends(get_cu
     cycles_by_status.update({status.value if hasattr(status, "value") else status: count for status, count in cycle_rows})
 
     due_today, overdue = db.execute(select(
-        func.coalesce(func.sum(case((Task.due_date == today, 1), else_=0)), 0),
-        func.coalesce(func.sum(case((Task.due_date < today, 1), else_=0)), 0),
+        func.coalesce(func.sum(case((Activity.planned_date == today, 1), else_=0)), 0),
+        func.coalesce(func.sum(case((Activity.planned_date < today, 1), else_=0)), 0),
     ).where(
-        Task.deleted_at.is_(None), Task.status == "pending"
+        Activity.deleted_at.is_(None), Activity.status == "pending"
     )).one()
 
     finance_rows = db.execute(select(FinanceEntry.id, FinanceEntry.direction, FinanceEntry.amount_encrypted).where(

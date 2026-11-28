@@ -9,8 +9,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.migrations import migrate_customer_area_encryption, migrate_finance_entries, migrate_task_finance_fields
-from app.models import Batch, CropCycle, CropType, Customer, FinanceEntry, Role, StockDocumentLine, Supplier, Table, Task, User
+from app.migrations import migrate_customer_area_encryption, migrate_finance_entries, migrate_rename_tasks_to_activities, migrate_task_finance_fields
+from app.models import Batch, CropCycle, CropType, Customer, FinanceEntry, Role, StockDocumentLine, Supplier, Table, Activity, User
 from app.security import get_current_user
 from app.services.secure_fields import decrypt_number, decrypt_text, encrypt_number, encrypt_text
 from app.services.source_types import STOCK_DOCUMENT
@@ -113,12 +113,13 @@ def test_task_finance_migration_preserves_existing_task_columns_and_is_idempoten
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT, deleted_at DATETIME)")
         connection.exec_driver_sql("INSERT INTO tasks (id, title, status) VALUES (1, 'existing', 'pending')")
+    migrate_rename_tasks_to_activities(engine)
     migrate_task_finance_fields(engine)
     migrate_task_finance_fields(engine)
-    columns = {column["name"] for column in inspect(engine).get_columns("tasks")}
+    columns = {column["name"] for column in inspect(engine).get_columns("activities")}
     assert {"id", "title", "labor_cost_encrypted", "worker_count", "extra_cost_encrypted", "stock_alert_product_id"} <= columns
     with engine.connect() as connection:
-        assert connection.exec_driver_sql("SELECT title, labor_cost_encrypted FROM tasks WHERE id=1").one() == ("existing", None)
+        assert connection.exec_driver_sql("SELECT title, labor_cost_encrypted FROM activities WHERE id=1").one() == ("existing", None)
 
 
 def test_customer_area_migration_is_additive_and_idempotent():
@@ -393,7 +394,7 @@ def test_completed_task_with_costs_creates_auto_labor_entry():
             entry = db.scalar(select(FinanceEntry).where(FinanceEntry.source_type == "task", FinanceEntry.source_id == task_id))
             assert entry.direction == "expense" and entry.category == "labor" and entry.is_auto
             assert entry.crop_cycle_id == 1 and decrypt_number(entry.amount_encrypted) == Decimal("125.50")
-            task = db.get(Task, task_id)
+            task = db.get(Activity, task_id)
             assert b"100.00" not in task.labor_cost_encrypted
 
 

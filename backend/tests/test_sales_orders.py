@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Batch, CropCycle, CropType, Role, SalesOrderCycle, Table, Task, User
+from app.models import Batch, CropCycle, CropType, Role, SalesOrderCycle, Table, Activity, User
 from app.security import get_current_user
 from app.services.sales_orders import today_bangkok
 
@@ -129,7 +129,7 @@ def test_completing_task_only_prompts_then_creates_cycles(env):
     assert line["planting_status"] == "planted" and line["cycle_ids"] == created["cycle_ids"]
     env.post(url, {**body, "table_ids": [3]}, 409)  # no duplicates
     with env.Session() as db:
-        titles = [task.title for task in db.scalars(select(Task).where(Task.cycle_id.is_not(None)))]
+        titles = [task.title for task in db.scalars(select(Activity).where(Activity.cycle_id.is_not(None)))]
     assert len(titles) == 2 and all(title.startswith("ย้ายปลูก") for title in titles)
 
 

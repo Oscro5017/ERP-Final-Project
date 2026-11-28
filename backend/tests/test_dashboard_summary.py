@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Batch, CropCycle, CropType, FinanceEntry, Role, Table, Task, User
+from app.models import Batch, CropCycle, CropType, FinanceEntry, Role, Table, Activity, User
 from app.security import get_current_user
 from app.services.products_stock import record_movement
 from app.services.secure_fields import encrypt_number
@@ -70,9 +70,9 @@ def test_dashboard_summary_uses_product_cycle_task_and_finance_data(monkeypatch)
             db.add_all([
                 CropCycle(table_id=1, batch_id=1, crop_type_id=1, nursery_start=date(2025, 3, 1), status="nursery", cycle_code="250301"),
                 CropCycle(table_id=1, batch_id=1, crop_type_id=1, nursery_start=date(2025, 3, 2), status="ready_to_harvest", cycle_code="250302"),
-                Task(title="due", due_date=date(2025, 3, 15), status="pending"),
-                Task(title="late", due_date=date(2025, 3, 14), status="pending"),
-                Task(title="done", due_date=date(2025, 3, 10), status="done"),
+                Activity(title="due", planned_date=date(2025, 3, 15), status="pending"),
+                Activity(title="late", planned_date=date(2025, 3, 14), status="pending"),
+                Activity(title="done", planned_date=date(2025, 3, 10), status="done"),
                 FinanceEntry(entry_date=date(2025, 3, 1), direction="income", category="sale", amount_encrypted=encrypt_number(100).encode("ascii"), is_auto=False, status="posted"),
                 FinanceEntry(entry_date=date(2025, 3, 2), direction="expense", category="other", amount_encrypted=encrypt_number(30).encode("ascii"), is_auto=False, status="posted"),
                 FinanceEntry(entry_date=date(2025, 2, 28), direction="income", category="sale", amount_encrypted=encrypt_number(999).encode("ascii"), is_auto=False, status="posted"),

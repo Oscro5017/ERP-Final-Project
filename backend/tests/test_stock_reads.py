@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Role, StockMovement, Task, User
+from app.models import Role, StockMovement, Activity, User
 from app.security import get_current_user
 from app.services.products_stock import record_movement
 
@@ -186,18 +186,18 @@ def test_low_stock_alert_is_created_once_and_closed_when_restocked():
         product_id = add_product(client, "Private Low Stock Item", reorder_point=5)
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 4, "unit": "kg"}).status_code == 200
         with Session() as db:
-            alerts = db.scalars(select(Task).where(Task.stock_alert_product_id == product_id)).all()
+            alerts = db.scalars(select(Activity).where(Activity.stock_alert_product_id == product_id)).all()
             assert len(alerts) == 1 and alerts[0].status == "pending" and alerts[0].is_encrypted
             first_alert_id = alerts[0].id
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 3, "unit": "kg"}).status_code == 200
         with Session() as db:
-            assert len(db.scalars(select(Task).where(Task.stock_alert_product_id == product_id, Task.status == "pending")).all()) == 1
+            assert len(db.scalars(select(Activity).where(Activity.stock_alert_product_id == product_id, Activity.status == "pending")).all()) == 1
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 6, "unit": "kg"}).status_code == 200
         with Session() as db:
-            assert db.get(Task, first_alert_id).status == "done"
+            assert db.get(Activity, first_alert_id).status == "done"
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 4, "unit": "kg"}).status_code == 200
         with Session() as db:
-            alerts = db.scalars(select(Task).where(Task.stock_alert_product_id == product_id, Task.status == "pending")).all()
+            alerts = db.scalars(select(Activity).where(Activity.stock_alert_product_id == product_id, Activity.status == "pending")).all()
             assert len(alerts) == 1 and alerts[0].id != first_alert_id
     with API(Session, Role.developer) as client:
         response = client.get("/tasks")
@@ -211,11 +211,11 @@ def test_reorder_point_does_not_create_duplicate_open_alerts_for_repeated_moveme
         product_id = add_product(client, "Repeated Low Stock Item", reorder_point=5)
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 4, "unit": "kg"}).status_code == 200
         with Session() as db:
-            first = db.scalar(select(Task).where(Task.stock_alert_product_id == product_id, Task.status == "pending"))
+            first = db.scalar(select(Activity).where(Activity.stock_alert_product_id == product_id, Activity.status == "pending"))
             first_id = first.id
         assert client.post(f"/products/{product_id}/adjustments", json={"counted_quantity": 3, "unit": "kg"}).status_code == 200
         with Session() as db:
-            alerts = db.scalars(select(Task).where(Task.stock_alert_product_id == product_id)).all()
+            alerts = db.scalars(select(Activity).where(Activity.stock_alert_product_id == product_id)).all()
             open_alerts = [task for task in alerts if task.status == "pending"]
             assert len(alerts) == 1 and len(open_alerts) == 1 and open_alerts[0].id == first_id
 
@@ -231,7 +231,7 @@ def test_reorder_point_creates_new_alert_after_restock_and_second_crossing():
             )
             assert response.status_code == 200, response.text
         with Session() as db:
-            alerts = db.scalars(select(Task).where(Task.stock_alert_product_id == product_id).order_by(Task.id)).all()
+            alerts = db.scalars(select(Activity).where(Activity.stock_alert_product_id == product_id).order_by(Activity.id)).all()
             assert len(alerts) == 2
             assert alerts[0].status == "done"
             assert alerts[1].status == "pending"

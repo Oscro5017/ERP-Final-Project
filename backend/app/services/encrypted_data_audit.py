@@ -53,6 +53,10 @@ def _row_identifier_columns(table: Table, dialect_name: str):
     return []
 
 
+# Activities keep the title encrypted only for manual rows; "tasks" is the table name before the rename.
+_TITLE_TABLES = {"activities", "tasks"}
+
+
 def audit_encrypted_data(connection: Connection) -> list[EncryptedColumnAudit]:
     inspector = inspect(connection)
     results = []
@@ -68,13 +72,13 @@ def audit_encrypted_data(connection: Connection) -> list[EncryptedColumnAudit]:
             name for name in columns
             if name.endswith("_encrypted") and name != "is_encrypted"
         )
-        if table_name == "tasks" and {"title", "is_encrypted"}.issubset(columns):
+        if table_name in _TITLE_TABLES and {"title", "is_encrypted"}.issubset(columns):
             encrypted_columns.append("title")
 
         for column_name in encrypted_columns:
             value_column = table.c[column_name]
             statement = select(*identifiers, value_column).select_from(table)
-            if table_name == "tasks" and column_name == "title":
+            if table_name in _TITLE_TABLES and column_name == "title":
                 statement = statement.where(table.c.is_encrypted.is_(True))
             total = ok = failed = 0
             failures: list[EncryptedValueFailure] = []

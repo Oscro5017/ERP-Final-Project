@@ -15,7 +15,7 @@ from app.main import app
 from app.models import (
     Batch, CropCycle, CropCycleStatusLog, CropType, Customer, FinanceEntry,
     InputApplication, InputCatalog, InputItem, Insight, Product,
-    Role, StockDocument, StockDocumentLine, StockMovement, Supplier, Table, Task, User,
+    Role, StockDocument, StockDocumentLine, StockMovement, Supplier, Table, Activity, User,
 )
 from app.security import get_current_user
 from app.services.secure_fields import encrypt_number, encrypt_text, hash_catalog_name
@@ -104,9 +104,9 @@ def _make_phase2_db():
                 source_type="stock_document", source_id=1, crop_cycle_id=1, customer_id=1,
                 is_auto=True, status="posted",
             ),
-            Task(
+            Activity(
                 id=1, cycle_id=1, title=_enc("ZZ_TASK_TITLE_6F92").decode("ascii"),
-                due_date=date.today(), status="pending", source="manual", is_encrypted=True,
+                planned_date=date.today(), status="pending", source="manual", is_encrypted=True,
                 labor_cost_encrypted=encrypt_number(Decimal("12345.67")).encode("ascii"),
                 worker_count=2, extra_cost_encrypted=encrypt_number(Decimal("54321.09")).encode("ascii"),
             ),

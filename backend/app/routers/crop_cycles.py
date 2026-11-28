@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import CropCycle, CropCycleStatusLog, CycleStatus, Task, utc_now
+from ..models import CropCycle, CropCycleStatusLog, CycleStatus, Activity, utc_now
 from ..query_helpers import active_rows, get_active
 from ..schemas import CropCycleCreate, CropCycleResponse, CropCycleStatusLogResponse, CropCycleUpdate
 from ..security import get_current_user
@@ -67,7 +67,7 @@ def delete_cycle(cycle_id: int, db: Session = Depends(get_db), _=Depends(get_cur
         raise HTTPException(status_code=404, detail="Crop cycle not found")
     cycle.deleted_at = utc_now()
     sync_crop_cycle_harvest_stock(db, cycle)
-    for task in db.scalars(active_rows(select(Task).where(Task.cycle_id == cycle.id), Task)).all():
+    for task in db.scalars(active_rows(select(Activity).where(Activity.cycle_id == cycle.id), Activity)).all():
         task.deleted_at = cycle.deleted_at
         void_task_finance(db, task.id, "Crop cycle removed")
     replan_open_orders(db)
